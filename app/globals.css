@@ -165,6 +165,12 @@ p {
   gap: 16px;
   background: #161d19;
 }
+.sidebar-route {
+  display: contents;
+}
+.labs-heading {
+  margin-top: 5px;
+}
 .sidebar-heading {
   font-size: 12px;
   color: #8a9e90;
@@ -269,6 +275,74 @@ p {
   background: #a8b9ad;
   display: inline-block;
   flex-shrink: 0;
+}
+.evidence-rail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border: 1px solid #33483a;
+  border-radius: 8px 8px 0 0;
+  overflow: hidden;
+  margin-top: 18px;
+  background: #151f19;
+}
+.evidence-rail > div {
+  min-width: 0;
+  padding: 13px 15px 12px;
+  border-right: 1px solid #33483a;
+}
+.evidence-rail > div:last-child {
+  border-right: 0;
+}
+.evidence-rail span,
+.evidence-rail strong,
+.evidence-rail small {
+  display: block;
+}
+.evidence-rail span {
+  color: #80a98a;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.evidence-rail strong {
+  color: #dce9df;
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 3px;
+}
+.evidence-rail small {
+  color: #91aa98;
+  font-size: 11px;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.proof-metrics {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid #33483a;
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+  margin-bottom: 18px;
+  background: #1b2920;
+  overflow-x: auto;
+}
+.proof-metrics span {
+  color: #91aa98;
+  font-size: 11px;
+  padding: 8px 15px;
+  border-right: 1px solid #33483a;
+  white-space: nowrap;
+}
+.proof-metrics span:last-child {
+  border-right: 0;
+}
+.proof-metrics b {
+  color: #c4efca;
+  font-weight: 600;
+  margin-right: 4px;
 }
 .workbench {
   padding: 34px 36px 20px;
@@ -1001,7 +1075,25 @@ h1 {
     grid-template-columns: 1fr;
   }
   .sidebar {
+    display: flex;
+    flex-direction: row;
+    gap: 7px;
+    overflow-x: auto;
+    padding: 10px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    min-width: 0;
+  }
+  .sidebar .sidebar-heading,
+  .sidebar .scenario-nav,
+  .sidebar .sidebar-bottom {
     display: none;
+  }
+  .sidebar .nav-link,
+  .sidebar .nav-active {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 8px 11px;
   }
   .workbench {
     padding: 25px;
@@ -1032,6 +1124,13 @@ h1 {
   }
   .experiment-grid {
     grid-template-columns: 1fr;
+  }
+  .evidence-rail {
+    display: flex;
+    overflow-x: auto;
+  }
+  .evidence-rail > div {
+    flex: 0 0 145px;
   }
   .page-intro {
     align-items: flex-start;

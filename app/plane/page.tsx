@@ -27,7 +27,6 @@ import {
   FlaskConical,
   GitBranch,
   Link2,
-  ListChecks,
   Minimize2,
   Pause,
   Play,
@@ -39,6 +38,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SessionPanel } from '@/components/session-panel';
+import { AppSidebar } from '@/components/app-sidebar';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { assertMode, type Mode } from '@/lib/lab-engine';
 import {
@@ -64,7 +64,16 @@ import {
   parsePlaneSession,
   PlaneSessionArchive,
 } from '@/lib/plane/session';
-import { objectInput, registerSiteTools, type SiteTool } from '@/lib/webmcp';
+import {
+  createSiteToolRegistry,
+  objectInput,
+  type SiteTool,
+  type SiteToolRegistry,
+} from '@/lib/webmcp';
+import {
+  planeToolDefinitions,
+  type PlaneToolName,
+} from '@/lib/plane/webmcp-tools';
 import type { Session } from '@/packages/recorder/src/index';
 
 const ISSUE_URL = 'https://github.com/makeplane/plane/issues/9674';
@@ -76,6 +85,8 @@ const TASK_SOURCE_URL =
   'https://github.com/makeplane/plane/blob/' +
   PLANE_COMMIT +
   '/apps/api/plane/bgtasks/work_item_link_task.py';
+const PLANE_PATCH_SHA256 =
+  'a48b20978ca27a0e3aec62fde4080d40b93fc5cd8bec6144712e04763daa2aab';
 
 function download(name: string, content: string, type: string) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -155,6 +166,7 @@ export default function PlaneLabPage() {
   const failureRecipe = useRef<PlaneCommand[]>([]);
   const generation = useRef(0);
   const busyRef = useRef(false);
+  const nativeRegistry = useRef<SiteToolRegistry | null>(null);
   const actionsRef = useRef<
     Record<
       string,
@@ -200,12 +212,33 @@ export default function PlaneLabPage() {
 
   const compactState = () => {
     const current = adapter.lab.getSnapshot();
+    const pending = current.document.pending;
+    const running = adapter.operation.getSnapshot();
     return {
       mode: current.mode,
-      document: current.document,
-      assertion: current.assertion,
+      link: {
+        displayTitle: current.document.link.title,
+        metadataTitle: current.document.link.metadata.title,
+        metadataSource: current.document.link.metadata.source,
+        revision: current.document.link.revision,
+      },
+      worker: pending
+        ? {
+            phase: current.document.phase,
+            capturedRevision: pending.revision,
+            capturedTitle: pending.result.title,
+            held: running?.held ?? false,
+          }
+        : null,
+      verdict: current.assertion
+        ? {
+            passed: current.assertion.passed,
+            completion: current.assertion.completion,
+            expected: current.assertion.expectedMetadataTitle,
+            actual: current.assertion.actualMetadataTitle,
+          }
+        : null,
       eventCount: current.events.length,
-      operation: adapter.operation.getSnapshot(),
       recording: {
         id: adapter.recorder.getSnapshot().id,
         eventCount: adapter.recorder.getSnapshot().entries.length,
@@ -373,9 +406,16 @@ export default function PlaneLabPage() {
     actionsRef.current = {
       plane_read_context(input) {
         objectInput(input, []);
+        const current = adapter.lab.getSnapshot();
         return {
           ...compactState(),
-          events: adapter.lab.getSnapshot().events,
+          recentEvents: current.events.slice(-6).map((event) => ({
+            id: event.id,
+            actor: event.actor,
+            kind: event.kind,
+            title: event.title,
+            elapsedMs: event.elapsedMs,
+          })),
           rule: PLANE_RULE,
           source: { view: VIEW_SOURCE_URL, worker: TASK_SOURCE_URL },
         };
@@ -447,11 +487,17 @@ export default function PlaneLabPage() {
       },
       plane_export_regression(input) {
         objectInput(input, []);
+        const content = exportPlaneRegression(chooseFailure());
         return {
           filename: 'interleave-plane-regression.test.mjs',
-          content: exportPlaneRegression(chooseFailure()),
-          instructions:
-            'Run with Node 22. Set INTERLEAVE_IMPLEMENTATION=unguarded to prove the test catches Plane preview@da1a7ab.',
+          downloadUrl: new URL(
+            '/interleave-plane-regression.test.mjs',
+            window.location.href,
+          ).href,
+          generatedCharacters: content.length,
+          recipeSteps: chooseFailure().length,
+          proves:
+            'fails on Plane preview@da1a7ab; passes with the proposed guard',
         };
       },
       async plane_export_upstream_patch(input) {
@@ -461,8 +507,12 @@ export default function PlaneLabPage() {
           throw new Error('The upstream patch artifact is unavailable.');
         return {
           filename: 'plane-9674-stale-metadata.patch',
-          content: await response.text(),
+          downloadUrl: new URL('/plane-9674.patch', window.location.href).href,
           appliesTo: PLANE_COMMIT,
+          sha256: PLANE_PATCH_SHA256,
+          sizeBytes: Number(response.headers.get('content-length')) || 17016,
+          validation: '37/37 focused and neighboring Plane tests passed',
+          license: 'AGPL-3.0 as a derivative Plane patch',
           publicationStatus: 'local review artifact; not published',
         };
       },
@@ -470,143 +520,37 @@ export default function PlaneLabPage() {
         objectInput(input, []);
         return {
           current: summary(adapter.recorder.getSnapshot()),
-          saved: archive
+          savedCount: archive.getSnapshot().sessions.length,
+          recent: archive
             .getSnapshot()
             .sessions.filter(
               (session) => session.id !== adapter.recorder.getSnapshot().id,
             )
+            .slice(0, 5)
             .map(summary),
           storageWarning: archive.getSnapshot().warning,
         };
-      },
-      plane_export_session(input) {
-        const args = objectInput(input, ['sessionId']);
-        const session = findSession(args.sessionId);
-        return {
-          filename: 'interleave-plane-' + session.id + '.json',
-          json: JSON.stringify(session, null, 2),
-        };
-      },
-      plane_import_session(input) {
-        const args = objectInput(input, ['json']);
-        if (typeof args.json !== 'string')
-          throw new Error('Session JSON is required.');
-        return summary(importSession(args.json));
       },
     };
   });
 
   useEffect(() => {
-    const schema = (properties: object = {}, required: string[] = []) => ({
-      type: 'object',
-      properties,
-      required,
-      additionalProperties: false,
+    const registry = createSiteToolRegistry(
+      (status, count, registrationError) =>
+        setNative({ status, count, error: registrationError }),
+    );
+    nativeRegistry.current = registry;
+    return () => {
+      nativeRegistry.current = null;
+      registry.dispose();
+    };
+  }, []);
+
+  useEffect(() => {
+    const definitions = planeToolDefinitions({
+      pending: Boolean(operation),
+      held: operation?.held ?? false,
     });
-    const modes = { type: 'string', enum: ['unguarded', 'guarded'] };
-    const titleInput = { type: 'string', minLength: 1, maxLength: 120 };
-    const definitions: Array<[string, string, object, boolean]> = [
-      [
-        'plane_read_context',
-        'Read the local source-verified Plane issue-link incident model, trace, preservation rule, recorder metadata, and exact pinned source links. No live Plane service is contacted.',
-        schema(),
-        true,
-      ],
-      [
-        'plane_reset',
-        'Reset the disposable Plane incident fixture and choose current or proposed guarded behavior.',
-        schema({ mode: modes }, ['mode']),
-        false,
-      ],
-      [
-        'plane_patch_link_slow',
-        'Model Plane issue-link PATCH at preview@da1a7ab: update a display title, queue the real background-task behavior, and keep the call pending so a human can edit metadata.',
-        schema(
-          {
-            title: titleInput,
-            delayMs: {
-              type: 'integer',
-              minimum: 500,
-              maximum: 20000,
-            },
-          },
-          ['title', 'delayMs'],
-        ),
-        false,
-      ],
-      [
-        'plane_set_link_metadata',
-        'Save explicit issue-link metadata while the queued Plane crawler may still be pending.',
-        schema({ title: titleInput }, ['title']),
-        false,
-      ],
-      [
-        'plane_hold_crawl',
-        'Hold the queued Plane crawler at its final database-write checkpoint.',
-        schema(),
-        false,
-      ],
-      [
-        'plane_complete_crawl',
-        'Complete the queued Plane crawler immediately using current or proposed guarded behavior.',
-        schema(),
-        false,
-      ],
-      [
-        'plane_cancel_crawl',
-        'Cancel the queued local Plane crawler without changing link metadata.',
-        schema(),
-        false,
-      ],
-      [
-        'plane_replay',
-        'Replay the current or selected validated Plane recording through a real asynchronous checkpoint.',
-        schema({ mode: modes, sessionId: { type: 'string' } }, ['mode']),
-        false,
-      ],
-      [
-        'plane_compare_modes',
-        'Run the same witnessed sequence against Plane preview@da1a7ab behavior and the proposed compare-and-set patch.',
-        schema(),
-        true,
-      ],
-      [
-        'plane_reduce_failure',
-        'Delta-debug the latest witnessed Plane failure until no more semantic commands can be removed.',
-        schema(),
-        true,
-      ],
-      [
-        'plane_export_regression',
-        'Return a deterministic regression that passes with the proposed patch and fails with current Plane behavior.',
-        schema(),
-        true,
-      ],
-      [
-        'plane_export_upstream_patch',
-        'Return the local upstream-ready patch for makeplane/plane#9674. This does not publish or contact maintainers.',
-        schema(),
-        true,
-      ],
-      [
-        'plane_list_sessions',
-        'Read metadata for current and browser-local Plane incident recordings.',
-        schema(),
-        true,
-      ],
-      [
-        'plane_export_session',
-        'Return validated Plane incident session JSON for the current or named recording.',
-        schema({ sessionId: { type: 'string' } }),
-        true,
-      ],
-      [
-        'plane_import_session',
-        'Validate and save Plane session JSON as inert browser-local data. Replay accepts only known semantic commands.',
-        schema({ json: { type: 'string', maxLength: 1500000 } }, ['json']),
-        false,
-      ],
-    ];
     const recorded = new Set([
       'plane_patch_link_slow',
       'plane_set_link_metadata',
@@ -614,12 +558,10 @@ export default function PlaneLabPage() {
       'plane_complete_crawl',
       'plane_cancel_crawl',
     ]);
-    const tools: SiteTool[] = definitions.map(
-      ([name, description, inputSchema, readOnlyHint]) => ({
-        name,
-        description,
-        inputSchema,
-        annotations: { readOnlyHint },
+    const tools: SiteTool[] = definitions.map((definition) => {
+      const name: PlaneToolName = definition.name;
+      return {
+        ...definition,
         execute(input, options) {
           let result: unknown;
           flushSync(() => {
@@ -630,12 +572,10 @@ export default function PlaneLabPage() {
           });
           return result;
         },
-      }),
-    );
-    return registerSiteTools(tools, (status, count, registrationError) =>
-      setNative({ status, count, error: registrationError }),
-    );
-  }, [adapter]);
+      };
+    });
+    nativeRegistry.current?.update(tools);
+  }, [adapter, operation]);
 
   const event =
     state.events.find((item) => item.id === selectedEvent) ??
@@ -673,7 +613,9 @@ export default function PlaneLabPage() {
               ? 'Manual mode'
               : native.status === 'error'
                 ? 'Tool registration failed'
-                : 'Connecting tools'}
+                : native.status === 'updating'
+                  ? 'Updating tool surface'
+                  : 'Connecting tools'}
         </span>
         <span className="version-chip">
           OSS INCIDENT <span>v0.4</span>
@@ -681,46 +623,16 @@ export default function PlaneLabPage() {
       </header>
 
       <div className="workspace">
-        <aside className="sidebar">
-          <div className="sidebar-heading">WORKBENCH</div>
-          <Link className="nav-link" href="/" prefetch={false}>
-            <FlaskConical size={17} /> Reservation fixture<span>01</span>
-          </Link>
-          <Link className="nav-link" href="/todomvc" prefetch={false}>
-            <ListChecks size={17} /> TodoMVC integration<span>02</span>
-          </Link>
-          <div className="nav-active">
-            <Link2 size={17} /> Plane incident<span>03</span>
-          </div>
-          <div className="sidebar-heading scenario-heading">
-            CURRENT INCIDENT
-          </div>
-          <div className="scenario-nav">
-            <span className="scenario-dot" />
-            <div>
-              Metadata overwrite
-              <small>Human PATCH × delayed Celery write</small>
-            </div>
-          </div>
-          <div className="sidebar-bottom">
-            <div className="tiny-symbol">
-              <FileWarning size={17} />
-            </div>
-            <strong>Public bug. Exact source.</strong>
-            <p>
-              Deterministic local reproduction of Plane’s open issue. No live
-              Plane deployment is contacted.
-            </p>
-            <a
-              className="upstream-link"
-              href={ISSUE_URL}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open issue #9674 <ExternalLink size={12} />
-            </a>
-          </div>
-        </aside>
+        <AppSidebar
+          active="plane"
+          scenarioHeading="CURRENT INCIDENT"
+          scenarioTitle="Metadata overwrite"
+          scenarioDetail="Human PATCH × delayed Celery write"
+          footerTitle="Public bug. Exact source."
+          footerBody="Deterministic reproduction of Plane’s open issue. No live Plane deployment is contacted."
+          footerHref={ISSUE_URL}
+          footerLinkLabel="Open issue #9674"
+        />
 
         <section className="workbench">
           <div className="page-intro">
@@ -764,6 +676,50 @@ export default function PlaneLabPage() {
             </a>
           </div>
 
+          <section className="evidence-rail" aria-label="Interleave proof flow">
+            <div>
+              <span>01</span>
+              <strong>Record</strong>
+              <small>native call + human edit</small>
+            </div>
+            <div>
+              <span>02</span>
+              <strong>Interrupt</strong>
+              <small>hold the worker write</small>
+            </div>
+            <div>
+              <span>03</span>
+              <strong>Inspect</strong>
+              <small>expected vs actual</small>
+            </div>
+            <div>
+              <span>04</span>
+              <strong>Minimize</strong>
+              <small>smallest failing sequence</small>
+            </div>
+            <div>
+              <span>05</span>
+              <strong>Export</strong>
+              <small>test + Plane patch</small>
+            </div>
+          </section>
+
+          <div className="proof-metrics" aria-label="Validation evidence">
+            <span>
+              <b>37 / 37</b> Plane tests
+            </span>
+            <span>
+              <b>13</b> upstream patch cases
+            </span>
+            <span>
+              <b>{native.status === 'ready' ? native.count : '9 → 5'}</b>{' '}
+              state-aware WebMCP tools
+            </span>
+            <span>
+              <b>0</b> live systems contacted
+            </span>
+          </div>
+
           <div className="run-toolbar">
             <Tabs
               value={state.mode}
@@ -798,7 +754,8 @@ export default function PlaneLabPage() {
                   ).catch(() => {})
                 }
               >
-                <Play /> {playing ? 'Replaying…' : 'Run real incident'}
+                <Play />
+                {playing ? 'Replaying…' : 'Run verified reproduction'}
               </Button>
             </div>
           </div>

@@ -36,6 +36,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SessionPanel } from '@/components/session-panel';
+import { AppSidebar } from '@/components/app-sidebar';
 import { assertMode, type Mode } from '@/lib/lab-engine';
 import {
   TodoAdapter,
@@ -633,48 +634,16 @@ export default function TodoMvcLab() {
         </span>
       </header>
       <div className="workspace">
-        <aside className="sidebar">
-          <div className="sidebar-heading">WORKBENCH</div>
-          <Link className="nav-link" href="/" prefetch={false}>
-            <FlaskConical size={17} />
-            Reservation fixture<span>01</span>
-          </Link>
-          <div className="nav-active">
-            <ListChecks size={17} />
-            TodoMVC integration<span>02</span>
-          </div>
-          <Link className="nav-link" href="/plane" prefetch={false}>
-            <GitBranch size={17} />
-            Plane incident<span>03</span>
-          </Link>
-          <div className="sidebar-heading scenario-heading">
-            CURRENT SCENARIO
-          </div>
-          <div className="scenario-nav">
-            <span className="scenario-dot" />
-            <div>
-              Delayed clear
-              <small>Human add × stale replacement</small>
-            </div>
-          </div>
-          <div className="sidebar-bottom">
-            <div className="tiny-symbol">
-              <Braces size={17} />
-            </div>
-            <strong>Real reducer. Seeded race.</strong>
-            <p>
-              TodoMVC owns the app behavior. Interleave owns the delayed fault.
-            </p>
-            <a
-              className="upstream-link"
-              href="https://github.com/tastejs/todomvc/tree/ff43b02e59dfa604386bb382034b2cd07c2bcd8a/examples/react"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Upstream source <ExternalLink size={12} />
-            </a>
-          </div>
-        </aside>
+        <AppSidebar
+          active="todomvc"
+          scenarioHeading="CURRENT SCENARIO"
+          scenarioTitle="Delayed clear"
+          scenarioDetail="Human add × stale replacement"
+          footerTitle="Real reducer. Seeded race."
+          footerBody="TodoMVC owns the app behavior. Interleave owns the delayed fault."
+          footerHref="https://github.com/tastejs/todomvc/tree/ff43b02e59dfa604386bb382034b2cd07c2bcd8a/examples/react"
+          footerLinkLabel="Upstream source"
+        />
         <section className="workbench">
           <div className="page-intro">
             <div>

@@ -1,6 +1,12 @@
-# Interleave — WebMCP Lab v0.4
+# Interleave — concurrency assurance for WebMCP
 
-A collaboration testing lab with real asynchronous operations, opt-in tool recording, saved sessions, and reproducible stale-write failures. It includes the original reservation fixture, an independently maintained TodoMVC integration, and a source-verified Plane issue-link integration.
+**WebMCP makes websites callable. Interleave makes concurrent human and agent actions trustworthy.**
+
+Interleave records real pending tool calls alongside human state changes, catches violated application rules, replays and minimizes the witnessed failure, and exports a deterministic regression. The flagship `/plane` experience turns public issue [`makeplane/plane#9674`](https://github.com/makeplane/plane/issues/9674) into a complete proof and a tested upstream patch. Reservation and TodoMVC adapters show that the recorder is reusable across application models.
+
+- Live flagship: [`/plane`](https://interleave-webmcp-lab.asaborodaniel.chatgpt.site/plane)
+- Public repository: [`Pavilion-devs/interleave`](https://github.com/Pavilion-devs/interleave)
+- Build plan and demo spine: [`plan.md`](plan.md)
 
 ## Run
 
@@ -33,7 +39,7 @@ At the pinned commit, an issue-link partial update queues `crawl_work_item_link_
 
 The exact rule is: **Metadata explicitly saved after a crawl is queued must not be overwritten by that stale crawl.** The verdict displays the expected value, actual value, queued revision, and live revision. The route records the pending call and human state transition, replays the session in either mode, reduces it to the three necessary commands, and exports a runnable regression.
 
-The proposed upstream change, three focused worker unit tests, and ten endpoint contract cases are available as [`public/plane-9674.patch`](public/plane-9674.patch). The endpoint matrix covers the app API and public API. Plane's official Docker test environment passes all 37 tests in the two affected modules, including the 13 new cases and 24 neighboring safety tests. [`docs/PLANE-9674.md`](docs/PLANE-9674.md) provides the source map, reproduction, patch rationale, and local validation record. These are local review artifacts and have not been submitted upstream.
+The proposed upstream change, three focused worker unit tests, and ten endpoint contract cases are available as [`public/plane-9674.patch`](public/plane-9674.patch). The endpoint matrix covers the app API and public API. Plane's official Docker test environment passes all 37 tests in the two affected modules, including the 13 new cases and 24 neighboring safety tests. [`docs/PLANE-9674.md`](docs/PLANE-9674.md) provides the source map, reproduction, patch rationale, and local validation record. The derivative patch is explicitly distributed under Plane's AGPL-3.0 license; Interleave's original source remains MIT. These are local review artifacts and have not been submitted upstream.
 
 ## Recorder and saved sessions
 
@@ -58,7 +64,11 @@ The second command is an intentionally failing verification. The older fixture c
 
 ## Native WebMCP
 
-The top-level document registers 17 tools through `document.modelContext.registerTool`. Unsupported browsers retain manual controls. Registration uses AbortSignal cleanup; no fake polyfill is installed.
+Every lab uses native `document.modelContext.registerTool`. Unsupported browsers retain manual controls. Registration uses AbortSignal cleanup; no fake polyfill is installed.
+
+The Plane route exposes nine focused tools while idle and five checkpoint controls while a crawler is pending. Interleave defers a tool-surface change until the current native call settles, preventing registration cleanup from aborting the operation being recorded. Tools include human-readable titles, parameter descriptions, read-only and untrusted-content annotations, and compact evidence receipts. Large regressions, patches, and session files stay behind explicit downloads instead of being copied into model context.
+
+The reservation fixture retains 17 tools for its broader recorder-development surface:
 
 - `reservation_reserve({delayMs})` stays pending until completion or cancellation. Native delay: 500–20000 ms. The manual interface can demonstrate a 30-second wait. The human can edit the visible selection during the call.
 - `lab_hold_response({})`, `reservation_release({})`, and `reservation_cancel({})` control the pending operation.

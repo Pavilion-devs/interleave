@@ -58,6 +58,7 @@ import {
 } from '@/lib/session-archive';
 import { exportAsyncRegression } from '@/lib/async-regression';
 import { SessionPanel } from '@/components/session-panel';
+import { AppSidebar } from '@/components/app-sidebar';
 import type { Session } from '@/packages/recorder/src/index';
 
 type Comparison = {
@@ -667,41 +668,14 @@ export default function Home() {
         </span>
       </header>
       <div className="workspace">
-        <aside className="sidebar">
-          <div className="sidebar-heading">WORKBENCH</div>
-          <div className="nav-active">
-            <FlaskConical size={17} />
-            Reservation fixture<span>01</span>
-          </div>
-          <Link className="nav-link" href="/todomvc" prefetch={false}>
-            <Layers size={17} />
-            TodoMVC integration<span>02</span>
-          </Link>
-          <Link className="nav-link" href="/plane" prefetch={false}>
-            <GitBranch size={17} />
-            Plane incident<span>03</span>
-          </Link>
-          <div className="sidebar-heading scenario-heading">
-            CURRENT SCENARIO
-          </div>
-          <div className="scenario-nav">
-            <span className="scenario-dot" />
-            <div>
-              Reservation race<small>Human edit × agent write</small>
-            </div>
-          </div>
-          <div className="sidebar-bottom">
-            <div className="tiny-symbol">
-              <Braces size={17} />
-            </div>
-            <strong>One page. Two actors.</strong>
-            <p>Watch what happens between a read and a write.</p>
-            <div className="local-indicator">
-              <span />
-              Local test fixture
-            </div>
-          </div>
-        </aside>
+        <AppSidebar
+          active="reservation"
+          scenarioHeading="CURRENT SCENARIO"
+          scenarioTitle="Reservation race"
+          scenarioDetail="Human edit × agent write"
+          footerTitle="One page. Two actors."
+          footerBody="Watch what happens between a read and a write."
+        />
         <section className="workbench">
           <div className="page-intro">
             <div>

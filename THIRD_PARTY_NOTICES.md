@@ -42,6 +42,11 @@ The source review and proposed patch are pinned to Plane commit
 Interleave does not bundle or execute a Plane deployment; the downloadable patch
 is a local review artifact for the public upstream source.
 
+`public/plane-9674.patch` modifies Plane files and is distributed as a
+derivative Plane artifact under AGPL-3.0. See
+[`docs/PLANE-PATCH-LICENSE.md`](docs/PLANE-PATCH-LICENSE.md) for the explicit
+license boundary. Interleave's original source remains MIT licensed.
+
 Plane is licensed under the GNU Affero General Public License v3.0. The upstream
 license and notices remain available in the
 [`makeplane/plane` repository](https://github.com/makeplane/plane/blob/da1a7ab85012d16836459a10dd92ec55eb739c69/LICENSE).
