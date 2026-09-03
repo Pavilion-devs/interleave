@@ -18,47 +18,64 @@ import {
   Check,
   ChevronRight,
   CircleDot,
+  Clock3,
+  Database,
   Download,
   ExternalLink,
   FileCode2,
+  FileWarning,
   FlaskConical,
   GitBranch,
+  Link2,
   ListChecks,
   Minimize2,
   Pause,
   Play,
   RotateCcw,
+  ScanSearch,
   ShieldCheck,
-  Trash2,
   UserRound,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SessionPanel } from '@/components/session-panel';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { assertMode, type Mode } from '@/lib/lab-engine';
 import {
-  TodoAdapter,
-  replayTodoAsync,
-  todoRecipeFromSession,
-  type TodoRecordedState,
-} from '@/lib/todomvc/adapter';
+  PlaneAdapter,
+  planeRecipeFromSession,
+  replayPlaneAsync,
+  type PlaneRecordedState,
+} from '@/lib/plane/adapter';
+import { assertPlaneDelay } from '@/lib/plane/async-crawl';
 import {
-  SAMPLE_TODO_RECIPE,
-  TODO_RULE,
-  assertTodoTitle,
-  reduceTodoFailure,
-  replayTodoRecipe,
-  type TodoCommand,
-} from '@/lib/todomvc/lab';
-import { exportTodoRegression } from '@/lib/todomvc/regression';
+  PLANE_COMMIT,
+  PLANE_ISSUE,
+  PLANE_RULE,
+  SAMPLE_PLANE_RECIPE,
+  assertPlaneTitle,
+  reducePlaneFailure,
+  replayPlaneRecipe,
+  type PlaneCommand,
+} from '@/lib/plane/lab';
+import { exportPlaneRegression } from '@/lib/plane/regression';
 import {
-  TodoSessionArchive,
-  closeTodoSession,
-  parseTodoSession,
-} from '@/lib/todomvc/session';
+  closePlaneSession,
+  parsePlaneSession,
+  PlaneSessionArchive,
+} from '@/lib/plane/session';
 import { objectInput, registerSiteTools, type SiteTool } from '@/lib/webmcp';
 import type { Session } from '@/packages/recorder/src/index';
+
+const ISSUE_URL = 'https://github.com/makeplane/plane/issues/9674';
+const VIEW_SOURCE_URL =
+  'https://github.com/makeplane/plane/blob/' +
+  PLANE_COMMIT +
+  '/apps/api/plane/app/views/issue/link.py';
+const TASK_SOURCE_URL =
+  'https://github.com/makeplane/plane/blob/' +
+  PLANE_COMMIT +
+  '/apps/api/plane/bgtasks/work_item_link_task.py';
 
 function download(name: string, content: string, type: string) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -78,21 +95,23 @@ function CompletionClock({ dueAt }: { dueAt: number | null }) {
   return (
     <span>
       {dueAt === null
-        ? 'Completion held'
-        : `Finishes in ${Math.max(0, Math.ceil((dueAt - (now || dueAt)) / 1000))}s`}
+        ? 'Worker held'
+        : 'Finishes in ' +
+          Math.max(0, Math.ceil((dueAt - (now || dueAt)) / 1000)) +
+          's'}
     </span>
   );
 }
 
 type Comparison = {
-  original: ReturnType<typeof replayTodoRecipe>;
-  guarded: ReturnType<typeof replayTodoRecipe>;
+  original: ReturnType<typeof replayPlaneRecipe>;
+  guarded: ReturnType<typeof replayPlaneRecipe>;
   steps: number;
 };
 
-export default function TodoMvcLab() {
-  const [adapter] = useState(() => new TodoAdapter());
-  const [archive] = useState(() => new TodoSessionArchive());
+export default function PlaneLabPage() {
+  const [adapter] = useState(() => new PlaneAdapter());
+  const [archive] = useState(() => new PlaneSessionArchive());
   const state = useSyncExternalStore(
     adapter.lab.subscribe,
     adapter.lab.getSnapshot,
@@ -114,9 +133,10 @@ export default function TodoMvcLab() {
     archive.getServerSnapshot,
   );
   const [selectedSession, setSelectedSession] =
-    useState<Session<TodoRecordedState> | null>(null);
+    useState<Session<PlaneRecordedState> | null>(null);
   const [delayMs, setDelayMs] = useState(15000);
-  const [title, setTitle] = useState('');
+  const [patchTitle, setPatchTitle] = useState('Production runbook');
+  const [metadataTitle, setMetadataTitle] = useState('Human verified runbook');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [hasRecording, setHasRecording] = useState(false);
@@ -124,15 +144,15 @@ export default function TodoMvcLab() {
   const [selectedEvent, setSelectedEvent] = useState<number | null>(null);
   const [comparison, setComparison] = useState<Comparison | null>(null);
   const [reduction, setReduction] = useState<ReturnType<
-    typeof reduceTodoFailure
+    typeof reducePlaneFailure
   > | null>(null);
   const [native, setNative] = useState<{
     status: string;
     count: number;
     error?: string;
   }>({ status: 'connecting', count: 0 });
-  const savedRecipe = useRef<TodoCommand[]>([]);
-  const failureRecipe = useRef<TodoCommand[]>([]);
+  const savedRecipe = useRef<PlaneCommand[]>([]);
+  const failureRecipe = useRef<PlaneCommand[]>([]);
   const generation = useRef(0);
   const busyRef = useRef(false);
   const actionsRef = useRef<
@@ -148,8 +168,8 @@ export default function TodoMvcLab() {
     const detach = adapter.recorder.subscribe(save);
     const leave = () => {
       if (adapter.operation.getSnapshot())
-        adapter.operation.cancel('The TodoMVC document was closed.');
-      adapter.recorder.interruptPending('The TodoMVC document was closed.');
+        adapter.operation.cancel('The Plane incident view was closed.');
+      adapter.recorder.interruptPending('The Plane incident view was closed.');
       save();
     };
     window.addEventListener('beforeunload', leave);
@@ -160,6 +180,7 @@ export default function TodoMvcLab() {
       adapter.dispose();
     };
   }, [adapter, archive]);
+
   useEffect(
     () =>
       adapter.lab.subscribe(() => {
@@ -189,11 +210,11 @@ export default function TodoMvcLab() {
         id: adapter.recorder.getSnapshot().id,
         eventCount: adapter.recorder.getSnapshot().entries.length,
       },
-      integration: {
-        application: 'TodoMVC React',
-        upstream:
-          'https://github.com/tastejs/todomvc/tree/ff43b02e59dfa604386bb382034b2cd07c2bcd8a/examples/react',
-        faultOwner: 'Interleave seeded orchestration layer',
+      provenance: {
+        application: 'Plane',
+        issue: PLANE_ISSUE,
+        commit: PLANE_COMMIT,
+        liveSystemsContacted: false,
       },
     };
   };
@@ -207,7 +228,8 @@ export default function TodoMvcLab() {
     adapter.reset(mode);
     setSelectedSession(null);
     setSelectedEvent(null);
-    setTitle('');
+    setPatchTitle('Production runbook');
+    setMetadataTitle('Human verified runbook');
     setError('');
     setNotice('');
     setComparison(null);
@@ -215,20 +237,22 @@ export default function TodoMvcLab() {
   };
   const chooseRecipe = () =>
     structuredClone(
-      savedRecipe.current.length ? savedRecipe.current : SAMPLE_TODO_RECIPE,
+      savedRecipe.current.length ? savedRecipe.current : SAMPLE_PLANE_RECIPE,
     );
   const chooseFailure = () =>
     structuredClone(
-      failureRecipe.current.length ? failureRecipe.current : SAMPLE_TODO_RECIPE,
+      failureRecipe.current.length
+        ? failureRecipe.current
+        : SAMPLE_PLANE_RECIPE,
     );
-  const play = async (recipe: TodoCommand[], mode: Mode, animate = true) => {
+  const play = async (recipe: PlaneCommand[], mode: Mode, animate = true) => {
     checkBusy();
     reset(mode);
     const token = generation.current;
     busyRef.current = true;
     setPlaying(true);
     try {
-      await replayTodoAsync(recipe, adapter, async () => {
+      await replayPlaneAsync(recipe, adapter, async () => {
         if (animate) await new Promise((resolve) => setTimeout(resolve, 350));
         if (token !== generation.current)
           throw new DOMException('Replay stopped.', 'AbortError');
@@ -258,7 +282,7 @@ export default function TodoMvcLab() {
     return session;
   };
   const importSession = (text: string) => {
-    const imported = closeTodoSession(parseTodoSession(text));
+    const imported = closePlaneSession(parsePlaneSession(text));
     if (imported.id === adapter.recorder.getSnapshot().id)
       throw new Error('This file is already the current session.');
     archive.save(imported);
@@ -267,11 +291,11 @@ export default function TodoMvcLab() {
   };
   const compare = () => {
     if (adapter.operation.getSnapshot())
-      throw new Error('Finish or cancel the delayed clear before comparing.');
+      throw new Error('Finish or cancel the worker before comparing.');
     const recipe = chooseFailure();
     const result = {
-      original: replayTodoRecipe(recipe, 'unguarded'),
-      guarded: replayTodoRecipe(recipe, 'guarded'),
+      original: replayPlaneRecipe(recipe, 'unguarded'),
+      guarded: replayPlaneRecipe(recipe, 'guarded'),
       steps: recipe.length,
     };
     setComparison(result);
@@ -279,24 +303,37 @@ export default function TodoMvcLab() {
   };
   const minimize = () => {
     if (adapter.operation.getSnapshot())
-      throw new Error('Finish or cancel the delayed clear before reducing.');
-    const result = reduceTodoFailure(chooseFailure());
+      throw new Error('Finish or cancel the worker before reducing.');
+    const result = reducePlaneFailure(chooseFailure());
     setReduction(result);
     return result;
   };
   const exportTest = () => {
-    const content = exportTodoRegression(chooseFailure());
+    const content = exportPlaneRegression(chooseFailure());
     download(
-      'interleave-todomvc-regression.test.mjs',
+      'interleave-plane-regression.test.mjs',
       content,
       'text/javascript',
     );
-    setNotice('Runnable TodoMVC regression test downloaded.');
+    setNotice('Runnable Plane regression downloaded.');
+    return content;
+  };
+  const exportPatch = async () => {
+    const response = await fetch('/plane-9674.patch');
+    if (!response.ok)
+      throw new Error('The upstream patch artifact is unavailable.');
+    const content = await response.text();
+    download('plane-9674-stale-metadata.patch', content, 'text/x-diff');
+    setNotice('Upstream-ready Plane patch downloaded.');
     return content;
   };
   const run = (action: () => unknown) => {
     try {
-      action();
+      const result = action();
+      if (result instanceof Promise)
+        void result.catch((reason) =>
+          setError(reason instanceof Error ? reason.message : 'Action failed.'),
+        );
       setError('');
     } catch (reason) {
       setError(
@@ -304,25 +341,27 @@ export default function TodoMvcLab() {
       );
     }
   };
-  const startClear = (quick = false) => {
-    setError('');
-    const pending = adapter.clear(quick ? 20000 : delayMs);
-    if (quick) adapter.operation.completeNow();
-    void pending.catch((reason) => {
-      if (!(reason instanceof Error && reason.name === 'AbortError'))
-        setError(reason instanceof Error ? reason.message : 'Clear failed.');
-    });
-  };
-  const addTodo = () => {
+  const startCrawl = () => {
     run(() => {
-      assertTodoTitle(title);
-      adapter.add(title);
-      setTitle('');
+      assertPlaneTitle(patchTitle);
+      assertPlaneDelay(delayMs);
+      const pending = adapter.crawl(patchTitle, delayMs);
+      void pending.catch((reason) => {
+        if (!(reason instanceof Error && reason.name === 'AbortError'))
+          setError(
+            reason instanceof Error ? reason.message : 'Plane crawl failed.',
+          );
+      });
     });
   };
+  const saveMetadata = () =>
+    run(() => {
+      assertPlaneTitle(metadataTitle);
+      adapter.editMetadata(metadataTitle);
+    });
 
   useLayoutEffect(() => {
-    const summary = (session: Session<TodoRecordedState>) => ({
+    const summary = (session: Session<PlaneRecordedState>) => ({
       id: session.id,
       startedAt: session.startedAt,
       mode: session.initialState.mode,
@@ -332,97 +371,102 @@ export default function TodoMvcLab() {
       ),
     });
     actionsRef.current = {
-      todos_read_context(input) {
+      plane_read_context(input) {
         objectInput(input, []);
         return {
           ...compactState(),
           events: adapter.lab.getSnapshot().events,
-          rule: TODO_RULE,
+          rule: PLANE_RULE,
+          source: { view: VIEW_SOURCE_URL, worker: TASK_SOURCE_URL },
         };
       },
-      todos_reset(input) {
+      plane_reset(input) {
         const args = objectInput(input, ['mode']);
         assertMode(args.mode);
         reset(args.mode);
         return compactState();
       },
-      todos_add(input) {
-        const args = objectInput(input, ['title']);
-        assertTodoTitle(args.title);
-        checkBusy();
-        adapter.lab.add(args.title, 'native');
-        return compactState();
-      },
-      todos_toggle(input) {
-        const args = objectInput(input, ['title']);
-        assertTodoTitle(args.title);
-        checkBusy();
-        adapter.lab.toggle(args.title, 'native');
-        return compactState();
-      },
-      todos_clear_completed_slow(input, options) {
-        const args = objectInput(input, ['delayMs']);
+      plane_patch_link_slow(input, options) {
+        const args = objectInput(input, ['title', 'delayMs']);
+        assertPlaneTitle(args.title);
+        assertPlaneDelay(args.delayMs);
         checkBusy();
         return adapter.operation
-          .clear(args.delayMs as number, 'native', options?.signal)
+          .crawl(args.title, args.delayMs, 'native', options?.signal)
           .then(() => compactState());
       },
-      todos_hold_clear(input) {
+      plane_set_link_metadata(input) {
+        const args = objectInput(input, ['title']);
+        assertPlaneTitle(args.title);
+        checkBusy();
+        adapter.lab.editMetadata(args.title, 'native');
+        return compactState();
+      },
+      plane_hold_crawl(input) {
         objectInput(input, []);
         checkBusy();
         return adapter.operation.hold();
       },
-      todos_complete_clear(input) {
+      plane_complete_crawl(input) {
         objectInput(input, []);
         checkBusy();
         adapter.operation.completeNow();
         return compactState();
       },
-      todos_cancel_clear(input) {
+      plane_cancel_crawl(input) {
         objectInput(input, []);
         checkBusy();
         adapter.operation.cancel();
         return compactState();
       },
-      async todos_replay(input) {
+      async plane_replay(input) {
         const args = objectInput(input, ['mode', 'sessionId']);
         assertMode(args.mode);
         checkBusy();
         if (adapter.operation.getSnapshot())
-          throw new Error(
-            'Finish or cancel the delayed clear before replaying.',
-          );
+          throw new Error('Finish or cancel the worker before replaying.');
         const recipe =
           args.sessionId === undefined
             ? chooseRecipe()
-            : todoRecipeFromSession(findSession(args.sessionId));
+            : planeRecipeFromSession(findSession(args.sessionId));
         await play(recipe, args.mode, false);
         return { ...compactState(), replayedSteps: recipe.length };
       },
-      todos_compare_modes(input) {
+      plane_compare_modes(input) {
         objectInput(input, []);
         const result = compare();
         return {
           steps: result.steps,
-          original: result.original.assertion,
-          guarded: result.guarded.assertion,
+          currentPlane: result.original.assertion,
+          proposedPatch: result.guarded.assertion,
         };
       },
-      todos_reduce_failure(input) {
+      plane_reduce_failure(input) {
         objectInput(input, []);
         return minimize();
       },
-      todos_export_regression(input) {
+      plane_export_regression(input) {
         objectInput(input, []);
-        const content = exportTodoRegression(chooseFailure());
         return {
-          filename: 'interleave-todomvc-regression.test.mjs',
-          content,
+          filename: 'interleave-plane-regression.test.mjs',
+          content: exportPlaneRegression(chooseFailure()),
           instructions:
-            'Run with Node 22: node --test tests/interleave-todomvc-regression.test.mjs. Set INTERLEAVE_IMPLEMENTATION=unguarded to confirm the test catches the seeded stale replacement.',
+            'Run with Node 22. Set INTERLEAVE_IMPLEMENTATION=unguarded to prove the test catches Plane preview@da1a7ab.',
         };
       },
-      todos_list_sessions(input) {
+      async plane_export_upstream_patch(input) {
+        objectInput(input, []);
+        const response = await fetch('/plane-9674.patch');
+        if (!response.ok)
+          throw new Error('The upstream patch artifact is unavailable.');
+        return {
+          filename: 'plane-9674-stale-metadata.patch',
+          content: await response.text(),
+          appliesTo: PLANE_COMMIT,
+          publicationStatus: 'local review artifact; not published',
+        };
+      },
+      plane_list_sessions(input) {
         objectInput(input, []);
         return {
           current: summary(adapter.recorder.getSnapshot()),
@@ -435,15 +479,15 @@ export default function TodoMvcLab() {
           storageWarning: archive.getSnapshot().warning,
         };
       },
-      todos_export_session(input) {
+      plane_export_session(input) {
         const args = objectInput(input, ['sessionId']);
         const session = findSession(args.sessionId);
         return {
-          filename: `interleave-todomvc-${session.id}.json`,
+          filename: 'interleave-plane-' + session.id + '.json',
           json: JSON.stringify(session, null, 2),
         };
       },
-      todos_import_session(input) {
+      plane_import_session(input) {
         const args = objectInput(input, ['json']);
         if (typeof args.json !== 'string')
           throw new Error('Session JSON is required.');
@@ -460,108 +504,115 @@ export default function TodoMvcLab() {
       additionalProperties: false,
     });
     const modes = { type: 'string', enum: ['unguarded', 'guarded'] };
-    const titleInput = { type: 'string', minLength: 1, maxLength: 100 };
+    const titleInput = { type: 'string', minLength: 1, maxLength: 120 };
     const definitions: Array<[string, string, object, boolean]> = [
       [
-        'todos_read_context',
-        'Read the live TodoMVC list, revision, pending operation, preservation rule, trace, and recorder metadata. This integration uses the upstream TodoMVC React reducer with a clearly labeled Interleave fault.',
+        'plane_read_context',
+        'Read the local source-verified Plane issue-link incident model, trace, preservation rule, recorder metadata, and exact pinned source links. No live Plane service is contacted.',
         schema(),
         true,
       ],
       [
-        'todos_reset',
-        'Reset the TodoMVC integration to its two sample todos and choose seeded or guarded orchestration. This deletes only disposable sample state in this page.',
+        'plane_reset',
+        'Reset the disposable Plane incident fixture and choose current or proposed guarded behavior.',
         schema({ mode: modes }, ['mode']),
         false,
       ],
       [
-        'todos_add',
-        'Add a todo through the TodoMVC React reducer. During a delayed clear, this represents a concurrent application edit. Use only a short non-sensitive title.',
+        'plane_patch_link_slow',
+        'Model Plane issue-link PATCH at preview@da1a7ab: update a display title, queue the real background-task behavior, and keep the call pending so a human can edit metadata.',
+        schema(
+          {
+            title: titleInput,
+            delayMs: {
+              type: 'integer',
+              minimum: 500,
+              maximum: 20000,
+            },
+          },
+          ['title', 'delayMs'],
+        ),
+        false,
+      ],
+      [
+        'plane_set_link_metadata',
+        'Save explicit issue-link metadata while the queued Plane crawler may still be pending.',
         schema({ title: titleInput }, ['title']),
         false,
       ],
       [
-        'todos_toggle',
-        'Toggle the one TodoMVC item whose title exactly matches. Errors if no item or multiple items match.',
-        schema({ title: titleInput }, ['title']),
-        false,
-      ],
-      [
-        'todos_clear_completed_slow',
-        'Start one asynchronous clear-completed call that remains pending while the visible TodoMVC app stays editable. The delay models application work. Seeded mode can replace the live list with stale reducer output; guarded mode blocks that replacement.',
-        schema({ delayMs: { type: 'integer', minimum: 500, maximum: 20000 } }, [
-          'delayMs',
-        ]),
-        false,
-      ],
-      [
-        'todos_hold_clear',
-        'Hold the currently pending TodoMVC clear at its completion checkpoint until completed or cancelled.',
+        'plane_hold_crawl',
+        'Hold the queued Plane crawler at its final database-write checkpoint.',
         schema(),
         false,
       ],
       [
-        'todos_complete_clear',
-        'Complete the currently pending TodoMVC clear immediately, applying the active seeded or guarded orchestration.',
+        'plane_complete_crawl',
+        'Complete the queued Plane crawler immediately using current or proposed guarded behavior.',
         schema(),
         false,
       ],
       [
-        'todos_cancel_clear',
-        'Cancel the pending TodoMVC clear without replacing the live list. The original tool call rejects with AbortError.',
+        'plane_cancel_crawl',
+        'Cancel the queued local Plane crawler without changing link metadata.',
         schema(),
         false,
       ],
       [
-        'todos_replay',
-        'Replay the current or selected completed TodoMVC recording through a real asynchronous checkpoint under seeded or guarded orchestration. Imported data is validated and only known actions execute.',
+        'plane_replay',
+        'Replay the current or selected validated Plane recording through a real asynchronous checkpoint.',
         schema({ mode: modes, sessionId: { type: 'string' } }, ['mode']),
         false,
       ],
       [
-        'todos_compare_modes',
-        'Run the latest witnessed failure on isolated seeded and guarded TodoMVC state machines and return both assertions.',
+        'plane_compare_modes',
+        'Run the same witnessed sequence against Plane preview@da1a7ab behavior and the proposed compare-and-set patch.',
         schema(),
         true,
       ],
       [
-        'todos_reduce_failure',
-        'Delta-debug the latest witnessed TodoMVC failure by rerunning candidate command lists until no more commands can be removed.',
+        'plane_reduce_failure',
+        'Delta-debug the latest witnessed Plane failure until no more semantic commands can be removed.',
         schema(),
         true,
       ],
       [
-        'todos_export_regression',
-        'Return a runnable Node regression test generated from the latest witnessed TodoMVC failure. The guarded adapter passes and the seeded adapter fails.',
+        'plane_export_regression',
+        'Return a deterministic regression that passes with the proposed patch and fails with current Plane behavior.',
         schema(),
         true,
       ],
       [
-        'todos_list_sessions',
-        'Read metadata for the current and browser-local TodoMVC recordings.',
+        'plane_export_upstream_patch',
+        'Return the local upstream-ready patch for makeplane/plane#9674. This does not publish or contact maintainers.',
         schema(),
         true,
       ],
       [
-        'todos_export_session',
-        'Return validated TodoMVC session JSON for the current or named browser-local recording.',
+        'plane_list_sessions',
+        'Read metadata for current and browser-local Plane incident recordings.',
+        schema(),
+        true,
+      ],
+      [
+        'plane_export_session',
+        'Return validated Plane incident session JSON for the current or named recording.',
         schema({ sessionId: { type: 'string' } }),
         true,
       ],
       [
-        'todos_import_session',
-        'Validate and save TodoMVC adapter session JSON as inert browser-local data. Replay is a separate explicit action limited to known semantic commands.',
+        'plane_import_session',
+        'Validate and save Plane session JSON as inert browser-local data. Replay accepts only known semantic commands.',
         schema({ json: { type: 'string', maxLength: 1500000 } }, ['json']),
         false,
       ],
     ];
     const recorded = new Set([
-      'todos_add',
-      'todos_toggle',
-      'todos_clear_completed_slow',
-      'todos_hold_clear',
-      'todos_complete_clear',
-      'todos_cancel_clear',
+      'plane_patch_link_slow',
+      'plane_set_link_metadata',
+      'plane_hold_crawl',
+      'plane_complete_crawl',
+      'plane_cancel_crawl',
     ]);
     const tools: SiteTool[] = definitions.map(
       ([name, description, inputSchema, readOnlyHint]) => ({
@@ -591,19 +642,15 @@ export default function TodoMvcLab() {
     state.events.at(-1);
   const documentState = state.document;
   const assertion = state.assertion;
-  const activeCount = documentState.todos.filter(
-    (todo) => !todo.completed,
-  ).length;
-  const completedCount = documentState.todos.length - activeCount;
 
   return (
-    <main className="lab-app todo-lab">
+    <main className="lab-app plane-lab">
       <header className="app-header">
         <Link
           className="brand"
           href="/"
           prefetch={false}
-          aria-label="Interleave reservation lab"
+          aria-label="Interleave home"
         >
           <span className="brand-mark">
             <GitBranch size={21} />
@@ -613,15 +660,15 @@ export default function TodoMvcLab() {
         <div className="header-path">
           <span>Integrations</span>
           <ChevronRight size={14} />
-          <span>TodoMVC</span>
+          <span>Plane #9674</span>
         </div>
         <span
-          className={`native-status ${native.status}`}
+          className={'native-status ' + native.status}
           title={native.error ?? 'Native document.modelContext tools'}
         >
           <span className="status-dot" />
           {native.status === 'ready'
-            ? `${native.count} native tools`
+            ? native.count + ' native tools'
             : native.status === 'unsupported'
               ? 'Manual mode'
               : native.status === 'error'
@@ -629,87 +676,91 @@ export default function TodoMvcLab() {
                 : 'Connecting tools'}
         </span>
         <span className="version-chip">
-          EXTERNAL APP <span>v0.4</span>
+          OSS INCIDENT <span>v0.4</span>
         </span>
       </header>
+
       <div className="workspace">
         <aside className="sidebar">
           <div className="sidebar-heading">WORKBENCH</div>
           <Link className="nav-link" href="/" prefetch={false}>
-            <FlaskConical size={17} />
-            Reservation fixture<span>01</span>
+            <FlaskConical size={17} /> Reservation fixture<span>01</span>
+          </Link>
+          <Link className="nav-link" href="/todomvc" prefetch={false}>
+            <ListChecks size={17} /> TodoMVC integration<span>02</span>
           </Link>
           <div className="nav-active">
-            <ListChecks size={17} />
-            TodoMVC integration<span>02</span>
+            <Link2 size={17} /> Plane incident<span>03</span>
           </div>
-          <Link className="nav-link" href="/plane" prefetch={false}>
-            <GitBranch size={17} />
-            Plane incident<span>03</span>
-          </Link>
           <div className="sidebar-heading scenario-heading">
-            CURRENT SCENARIO
+            CURRENT INCIDENT
           </div>
           <div className="scenario-nav">
             <span className="scenario-dot" />
             <div>
-              Delayed clear
-              <small>Human add × stale replacement</small>
+              Metadata overwrite
+              <small>Human PATCH × delayed Celery write</small>
             </div>
           </div>
           <div className="sidebar-bottom">
             <div className="tiny-symbol">
-              <Braces size={17} />
+              <FileWarning size={17} />
             </div>
-            <strong>Real reducer. Seeded race.</strong>
+            <strong>Public bug. Exact source.</strong>
             <p>
-              TodoMVC owns the app behavior. Interleave owns the delayed fault.
+              Deterministic local reproduction of Plane’s open issue. No live
+              Plane deployment is contacted.
             </p>
             <a
               className="upstream-link"
-              href="https://github.com/tastejs/todomvc/tree/ff43b02e59dfa604386bb382034b2cd07c2bcd8a/examples/react"
+              href={ISSUE_URL}
               target="_blank"
               rel="noreferrer"
             >
-              Upstream source <ExternalLink size={12} />
+              Open issue #9674 <ExternalLink size={12} />
             </a>
           </div>
         </aside>
+
         <section className="workbench">
           <div className="page-intro">
             <div>
               <div className="eyebrow">
-                INTEGRATION 002 <span>/</span> TODOMVC REACT
+                INTEGRATION 003 <span>/</span> PLANE PREVIEW
               </div>
               <h1>
-                The lost todo race
-                <span className="seeded">Interleave-seeded fault</span>
+                The crawler that writes too late
+                <span className="seeded verified">
+                  source-verified incident
+                </span>
               </h1>
-              <p>A delayed agent clear meets a human adding work.</p>
+              <p>
+                A successful metadata edit is silently replaced by a queued
+                worker.
+              </p>
             </div>
             <Button
               variant="outline"
               className="reset-button"
               onClick={() => reset()}
             >
-              <RotateCcw />
-              {playing ? 'Stop & reset' : 'Reset app'}
+              <RotateCcw /> {playing ? 'Stop & reset' : 'Reset incident'}
             </Button>
           </div>
 
-          <div className="provenance-strip">
+          <div className="provenance-strip plane-provenance">
             <Check size={15} />
             <span>
-              Application mutations run through TodoMVC’s upstream React
-              reducer. The delayed snapshot replacement is intentionally
-              injected by Interleave.
+              Behavior is derived from Plane{' '}
+              <b>preview@{PLANE_COMMIT.slice(0, 7)}</b>: the PATCH handler
+              queues every crawl and the worker writes metadata without a
+              revision check.
             </span>
-            <a
-              href="https://github.com/tastejs/todomvc/blob/ff43b02e59dfa604386bb382034b2cd07c2bcd8a/examples/react/src/todo/reducer.js"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Inspect reducer <ExternalLink size={12} />
+            <a href={VIEW_SOURCE_URL} target="_blank" rel="noreferrer">
+              Handler <ExternalLink size={12} />
+            </a>
+            <a href={TASK_SOURCE_URL} target="_blank" rel="noreferrer">
+              Worker <ExternalLink size={12} />
             </a>
           </div>
 
@@ -720,10 +771,10 @@ export default function TodoMvcLab() {
             >
               <TabsList className="mode-tabs">
                 <TabsTrigger value="unguarded" disabled={playing}>
-                  <CircleDot /> Seeded integration
+                  <CircleDot /> Current Plane
                 </TabsTrigger>
                 <TabsTrigger value="guarded" disabled={playing}>
-                  <ShieldCheck /> With revision guard
+                  <ShieldCheck /> Proposed patch
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -742,91 +793,105 @@ export default function TodoMvcLab() {
                 disabled={playing || !!operation}
                 onClick={() =>
                   void play(
-                    structuredClone(SAMPLE_TODO_RECIPE),
+                    structuredClone(SAMPLE_PLANE_RECIPE),
                     state.mode,
                   ).catch(() => {})
                 }
               >
-                <Play /> {playing ? 'Replaying…' : 'Run guided sample'}
+                <Play /> {playing ? 'Replaying…' : 'Run real incident'}
               </Button>
             </div>
           </div>
 
-          <div className="experiment-grid todo-experiment-grid">
+          <div className="experiment-grid plane-experiment-grid">
             <section className="fixture-panel">
               <div className="panel-heading">
                 <span>
-                  <ListChecks size={15} /> APPLICATION UNDER TEST
+                  <Link2 size={15} /> PLANE ISSUE LINK
                 </span>
-                <span className="small-label">TodoMVC React reducer</span>
+                <span className="small-label">Local deterministic fixture</span>
               </div>
-              <div className="fixture-stage todo-stage">
-                <section
-                  className="todomvc-app"
-                  aria-label="TodoMVC application"
+              <div className="fixture-stage plane-stage">
+                <div
+                  className="plane-card"
+                  aria-label="Plane issue link fixture"
                 >
-                  <h2>todos</h2>
+                  <div className="plane-card-top">
+                    <span className="plane-logo">P</span>
+                    <div>
+                      <small>WEB-9674 · External link</small>
+                      <h2>{documentState.link.title}</h2>
+                    </div>
+                    <span className={'worker-pill ' + documentState.phase}>
+                      <Clock3 size={12} />
+                      {documentState.pending
+                        ? 'crawler queued'
+                        : documentState.phase}
+                    </span>
+                  </div>
+                  <div className="plane-url">
+                    <Link2 size={15} />
+                    {documentState.link.url}
+                  </div>
+                  <div className="metadata-card">
+                    <div>
+                      <Database size={17} />
+                      <span>
+                        Stored metadata
+                        <small>metadata.title</small>
+                      </span>
+                    </div>
+                    <strong>{documentState.link.metadata.title}</strong>
+                    <em>{documentState.link.metadata.source}</em>
+                  </div>
+                  {documentState.pending && (
+                    <div className="queued-result">
+                      <ScanSearch size={16} />
+                      <span>
+                        Worker will write
+                        <strong>{documentState.pending.result.title}</strong>
+                      </span>
+                      <small>captured r{documentState.pending.revision}</small>
+                    </div>
+                  )}
                   <form
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      addTodo();
+                    className="metadata-form"
+                    onSubmit={(formEvent) => {
+                      formEvent.preventDefault();
+                      saveMetadata();
                     }}
                   >
-                    <input
-                      aria-label="New todo title"
-                      value={title}
-                      maxLength={100}
-                      disabled={playing}
-                      onChange={(event) => setTitle(event.target.value)}
-                      placeholder="What needs to be done?"
-                    />
-                    <Button type="submit" disabled={playing || !title.trim()}>
-                      Add
+                    <label>
+                      Human metadata override
+                      <input
+                        aria-label="Explicit metadata title"
+                        value={metadataTitle}
+                        maxLength={120}
+                        disabled={playing}
+                        onChange={(changeEvent) =>
+                          setMetadataTitle(changeEvent.target.value)
+                        }
+                      />
+                    </label>
+                    <Button
+                      type="submit"
+                      disabled={playing || !metadataTitle.trim()}
+                    >
+                      Save metadata
                     </Button>
                   </form>
-                  <ul>
-                    {documentState.todos.map((todo) => (
-                      <li
-                        key={todo.id}
-                        className={todo.completed ? 'completed' : ''}
-                      >
-                        <button
-                          className="todo-toggle"
-                          aria-label={`${todo.completed ? 'Mark active' : 'Mark completed'}: ${todo.title}`}
-                          aria-pressed={todo.completed}
-                          disabled={playing}
-                          onClick={() => run(() => adapter.toggle(todo.title))}
-                        >
-                          {todo.completed && <Check size={15} />}
-                        </button>
-                        <span>{todo.title}</span>
-                        {documentState.pending &&
-                          !documentState.pending.todos.some(
-                            (captured) => captured.id === todo.id,
-                          ) && <em>added during call</em>}
-                      </li>
-                    ))}
-                  </ul>
-                  <footer>
-                    <span>
-                      <strong>{activeCount}</strong>{' '}
-                      {activeCount === 1 ? 'item' : 'items'} left
-                    </span>
-                    <span>All</span>
-                    <button disabled={!completedCount}>Clear completed</button>
-                  </footer>
-                </section>
+                </div>
               </div>
               <div className="live-state">
-                <span>LIVE TODOMVC STATE</span>
+                <span>LIVE PLANE ROW</span>
                 <code>
-                  todos <b>{documentState.todos.length}</b>
+                  revision <b>{documentState.link.revision}</b>
                 </code>
                 <code>
-                  revision <b>{documentState.revision}</b>
+                  source <b>{documentState.link.metadata.source}</b>
                 </code>
                 <code>
-                  captured <b>{documentState.pending?.todos.length ?? '—'}</b>
+                  queued <b>{documentState.pending ? 'yes' : 'no'}</b>
                 </code>
               </div>
             </section>
@@ -834,38 +899,46 @@ export default function TodoMvcLab() {
             <section className="controls-panel">
               <div className="panel-heading">
                 <span>
-                  <FlaskConical size={15} /> CONTROL THE RACE
+                  <FlaskConical size={15} /> CONTROL THE INCIDENT
                 </span>
               </div>
               <div className="control-content">
                 <span className="step-index">
                   {documentState.pending
-                    ? '02 / ADD A TODO'
-                    : documentState.phase === 'blocked'
-                      ? '03 / RECOVER'
-                      : '01 / START CLEAR'}
+                    ? '02 / HUMAN EDIT'
+                    : '01 / AGENT PATCH'}
                 </span>
                 <h3>
                   {documentState.pending
-                    ? 'The agent is still working.'
-                    : documentState.phase === 'blocked'
-                      ? 'The stale write was refused.'
-                      : 'Delay “clear completed.”'}
+                    ? 'The Celery worker is still running.'
+                    : 'Queue Plane’s metadata crawler.'}
                 </h3>
                 <p>
                   {documentState.pending
-                    ? 'Add a todo in the real app on the left. The original call remains pending while the human changes state.'
-                    : documentState.phase === 'blocked'
-                      ? 'Your todo survived. Retry from the current list to finish the requested clear safely.'
-                      : 'The agent captures the current TodoMVC list, then completes later. Add work during the gap to test preservation.'}
+                    ? 'Save explicit metadata on the left, then complete the original worker. Current Plane will overwrite the newer value.'
+                    : 'Plane’s current PATCH path queues the crawler even when only the display title changes.'}
                 </p>
+                <label className="field-control">
+                  Agent display-title PATCH
+                  <input
+                    aria-label="Plane display title"
+                    value={patchTitle}
+                    maxLength={120}
+                    disabled={playing || !!operation}
+                    onChange={(changeEvent) =>
+                      setPatchTitle(changeEvent.target.value)
+                    }
+                  />
+                </label>
                 <label className="delay-control">
-                  Finish after
+                  Worker finishes after
                   <select
-                    aria-label="Todo clear delay"
+                    aria-label="Plane crawler delay"
                     value={delayMs}
                     disabled={playing || !!operation}
-                    onChange={(event) => setDelayMs(Number(event.target.value))}
+                    onChange={(changeEvent) =>
+                      setDelayMs(Number(changeEvent.target.value))
+                    }
                   >
                     <option value={8000}>8 seconds</option>
                     <option value={15000}>15 seconds</option>
@@ -874,17 +947,16 @@ export default function TodoMvcLab() {
                 </label>
                 <Button
                   className="primary-action"
-                  disabled={playing || !!operation || !completedCount}
-                  onClick={() => startClear(documentState.phase === 'blocked')}
+                  disabled={playing || !!operation || !patchTitle.trim()}
+                  onClick={startCrawl}
                 >
-                  <Bot />
-                  {documentState.phase === 'blocked'
-                    ? 'Retry current list now'
-                    : 'Start delayed clear'}
-                  <ArrowRight />
+                  <Bot /> PATCH link and queue crawl <ArrowRight />
                 </Button>
                 <div
-                  className={`checkpoint ${documentState.pending ? 'checkpoint-active' : ''}`}
+                  className={
+                    'checkpoint ' +
+                    (documentState.pending ? 'checkpoint-active' : '')
+                  }
                 >
                   <span className="checkpoint-line" />
                   <span>
@@ -892,7 +964,7 @@ export default function TodoMvcLab() {
                     {operation ? (
                       <CompletionClock dueAt={operation.dueAt} />
                     ) : (
-                      'Before list replacement'
+                      'Before IssueLink metadata write'
                     )}
                   </span>
                   <span className="checkpoint-line" />
@@ -924,7 +996,7 @@ export default function TodoMvcLab() {
                   <ShieldCheck size={18} />
                   <div>
                     <strong>Explicit preservation rule</strong>
-                    <p>{TODO_RULE}</p>
+                    <p>{PLANE_RULE}</p>
                   </div>
                 </div>
               </div>
@@ -938,20 +1010,22 @@ export default function TodoMvcLab() {
           )}
           {assertion && (
             <div
-              className={`verdict ${assertion.passed ? 'passed' : 'failed'}`}
+              className={'verdict ' + (assertion.passed ? 'passed' : 'failed')}
             >
               <span className="verdict-icon">
-                {assertion.passed ? <ShieldCheck /> : <Trash2 />}
+                {assertion.passed ? <ShieldCheck /> : <FileWarning />}
               </span>
               <div>
                 <strong>
                   {assertion.passed
-                    ? assertion.completion === 'blocked'
-                      ? 'PASS · stale replacement blocked'
-                      : 'PASS · human work preserved'
-                    : 'FAIL · human todo silently erased'}
+                    ? 'PASS · stale worker rejected'
+                    : 'FAIL · newer metadata silently replaced'}
                 </strong>
                 <p>{assertion.message}</p>
+                <small>
+                  expected “{assertion.expectedMetadataTitle}” · actual “
+                  {assertion.actualMetadataTitle}”
+                </small>
               </div>
               <span className="verdict-value">
                 {assertion.passed ? 'RULE HOLDS' : 'RULE VIOLATED'}
@@ -968,7 +1042,7 @@ export default function TodoMvcLab() {
               <div className="trace-legend">
                 <i className="agent-dot" /> Agent
                 <i className="human-dot" /> Human
-                <i className="system-dot" /> System / guard
+                <i className="system-dot" /> Worker / guard
               </div>
             </div>
             <div className="trace-grid">
@@ -978,24 +1052,31 @@ export default function TodoMvcLab() {
                     <Activity />
                     <strong>No events yet.</strong>
                     <p>
-                      Start the delayed clear, then add a todo while it runs.
+                      Queue the crawler, save metadata, and release the worker.
                     </p>
                   </div>
                 ) : (
                   state.events.map((item) => (
                     <button
                       key={item.id}
-                      className={`trace-event ${item.kind} ${event?.id === item.id ? 'selected' : ''}`}
+                      className={
+                        'trace-event ' +
+                        item.kind +
+                        ' ' +
+                        (event?.id === item.id ? 'selected' : '')
+                      }
                       onClick={() => setSelectedEvent(item.id)}
                     >
                       <span className="event-number">
                         {String(item.id).padStart(2, '0')}
                       </span>
-                      <span className={`actor-icon ${item.actor}`}>
+                      <span className={'actor-icon ' + item.actor}>
                         {item.actor === 'human' ? (
                           <UserRound size={16} />
                         ) : item.actor === 'guard' ? (
                           <ShieldCheck size={16} />
+                        ) : item.actor === 'worker' ? (
+                          <Database size={16} />
                         ) : (
                           <Bot size={16} />
                         )}
@@ -1023,14 +1104,14 @@ export default function TodoMvcLab() {
                       <span>AFTER</span>
                     </div>
                     <div className="diff-row changed">
-                      <code>todo count</code>
-                      <code>{event.before.todos.length}</code>
-                      <code>{event.after.todos.length}</code>
+                      <code>metadata.title</code>
+                      <code>{event.before.link.metadata.title}</code>
+                      <code>{event.after.link.metadata.title}</code>
                     </div>
                     <div className="diff-row changed">
                       <code>revision</code>
-                      <code>{event.before.revision}</code>
-                      <code>{event.after.revision}</code>
+                      <code>{event.before.link.revision}</code>
+                      <code>{event.after.link.revision}</code>
                     </div>
                     <div className="diff-row changed">
                       <code>phase</code>
@@ -1053,8 +1134,8 @@ export default function TodoMvcLab() {
           <section className="proof-panel">
             <div className="proof-heading">
               <div>
-                <span className="eyebrow">FAILURE ANALYSIS</span>
-                <h2>Prove the patch against the same recording.</h2>
+                <span className="eyebrow">UPSTREAM CONTRIBUTION</span>
+                <h2>Prove a real patch against the same recording.</h2>
               </div>
               <div className="proof-actions">
                 <Button
@@ -1062,30 +1143,31 @@ export default function TodoMvcLab() {
                   disabled={!!operation}
                   onClick={() => run(compare)}
                 >
-                  <GitBranch /> Compare modes
+                  <GitBranch /> Compare
                 </Button>
                 <Button
                   variant="outline"
                   disabled={!!operation}
                   onClick={() => run(minimize)}
                 >
-                  <Minimize2 /> Reduce failure
+                  <Minimize2 /> Reduce
                 </Button>
               </div>
             </div>
             <p className="proof-caption">
-              Analysis keeps the latest witnessed failure even after a
-              successful retry.
+              The proposed Plane change avoids metadata-only recrawls and
+              atomically checks the link URL and update timestamp before the
+              worker writes.
             </p>
             {comparison && (
               <div className="comparison-grid">
                 <div className="comparison-card">
                   <div>
-                    <strong>Seeded integration</strong>
+                    <strong>Plane preview@da1a7ab</strong>
                     <span>FAIL</span>
                   </div>
                   <p>
-                    <span>Human todo survives</span>
+                    <span>Explicit metadata survives</span>
                     <b>
                       {comparison.original.assertion?.passed ? 'yes' : 'no'}
                     </b>
@@ -1094,11 +1176,11 @@ export default function TodoMvcLab() {
                 </div>
                 <div className="comparison-card pass">
                   <div>
-                    <strong>Revision guard</strong>
+                    <strong>Proposed compare-and-set</strong>
                     <span>PASS</span>
                   </div>
                   <p>
-                    <span>Stale replacement</span>
+                    <span>Stale worker</span>
                     <b>{comparison.guarded.assertion?.completion}</b>
                   </p>
                   <small>{comparison.guarded.assertion?.message}</small>
@@ -1119,26 +1201,48 @@ export default function TodoMvcLab() {
                 </div>
                 <div className="recipe-strip">
                   {reduction.recipe.map((command, index) => (
-                    <span key={`${command.type}-${index}`}>{command.type}</span>
+                    <span key={command.type + '-' + index}>{command.type}</span>
                   ))}
                 </div>
               </div>
             )}
-            <div className="export-row">
-              <div>
-                <FileCode2 />
+            <div className="export-stack">
+              <div className="export-row">
                 <div>
-                  interleave-todomvc-regression.test.mjs
-                  <small>Same test passes guarded and fails seeded.</small>
+                  <FileCode2 />
+                  <div>
+                    interleave-plane-regression.test.mjs
+                    <small>
+                      Passes proposed behavior and fails current Plane.
+                    </small>
+                  </div>
                 </div>
+                <Button
+                  variant="outline"
+                  disabled={!!operation}
+                  onClick={() => run(exportTest)}
+                >
+                  <Download /> Regression
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                disabled={!!operation}
-                onClick={() => run(exportTest)}
-              >
-                <Download /> Export regression
-              </Button>
+              <div className="export-row">
+                <div>
+                  <GitBranch />
+                  <div>
+                    plane-9674-stale-metadata.patch
+                    <small>
+                      Four-file local contribution; publication requires review.
+                    </small>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  disabled={!!operation}
+                  onClick={() => run(exportPatch)}
+                >
+                  <Download /> Upstream patch
+                </Button>
+              </div>
             </div>
             {notice && <p className="export-notice">{notice}</p>}
           </section>
@@ -1149,14 +1253,14 @@ export default function TodoMvcLab() {
             selected={selectedSession}
             onSelect={setSelectedSession}
             onReplay={(session) =>
-              void play(todoRecipeFromSession(session), state.mode).catch(
+              void play(planeRecipeFromSession(session), state.mode).catch(
                 () => {},
               )
             }
             onImport={importSession}
             onExport={(session) =>
               download(
-                `interleave-todomvc-${session.id}.json`,
+                'interleave-plane-' + session.id + '.json',
                 JSON.stringify(session, null, 2),
                 'application/json',
               )
@@ -1164,20 +1268,23 @@ export default function TodoMvcLab() {
             warning={archiveState.warning}
             busy={playing || !!operation}
             sessionLabel={(session) =>
-              `${session.initialState.mode} · ${session.entries.length} events`
+              session.initialState.mode +
+              ' · ' +
+              session.entries.length +
+              ' events'
             }
-            emptyTitle="Start a TodoMVC clear to record it."
-            emptyBody="The pending tool, human todo changes, completion, and state transitions will appear here."
-            footnote="TodoMVC sessions use their own versioned adapter. Imports are inert data; replay accepts only validated TodoMVC actions and never executes uploaded code."
+            emptyTitle="Queue a Plane crawler to start recording."
+            emptyBody="The API PATCH, human metadata edit, worker completion, and exact row transitions will appear here."
+            footnote="Plane incident sessions use a versioned adapter. Imports remain inert data; replay accepts only validated Plane commands and never executes uploaded code."
           />
 
           <footer className="integration-footer">
-            <Link href="/" prefetch={false}>
-              <ArrowLeft size={14} /> Reservation fixture
+            <Link href="/todomvc" prefetch={false}>
+              <ArrowLeft size={14} /> TodoMVC integration
             </Link>
             <span>
-              TodoMVC reducer · ff43b02 · pinned 2026-09-03 · MIT · See
-              THIRD_PARTY_NOTICES.md
+              Plane preview · {PLANE_COMMIT.slice(0, 7)} · AGPL-3.0 · public
+              issue #9674 · local fixtures only
             </span>
           </footer>
         </section>

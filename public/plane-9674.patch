@@ -1,0 +1,209 @@
+diff --git a/apps/api/plane/api/views/issue.py b/apps/api/plane/api/views/issue.py
+index da9edc66d66a19bdc1df13d7b490cceaf81f3ff2..d51ddec99af286033e3825886f8cd6e52c99db88 100644
+--- a/apps/api/plane/api/views/issue.py
++++ b/apps/api/plane/api/views/issue.py
+@@ -1196,7 +1196,11 @@ class IssueLinkListCreateAPIEndpoint(BaseAPIView):
+         serializer = IssueLinkCreateSerializer(data=request.data)
+         if serializer.is_valid():
+             serializer.save(project_id=project_id, issue_id=issue_id)
+-            crawl_work_item_link_title.delay(serializer.instance.id, serializer.instance.url)
++            crawl_work_item_link_title.delay(
++                serializer.instance.id,
++                serializer.instance.url,
++                serializer.instance.updated_at.isoformat(),
++            )
+             link = IssueLink.objects.get(pk=serializer.instance.id)
+             link.created_by_id = request.data.get("created_by", request.user.id)
+             link.save(update_fields=["created_by"])
+@@ -1309,8 +1313,18 @@ class IssueLinkDetailAPIEndpoint(BaseAPIView):
+         current_instance = json.dumps(IssueLinkSerializer(issue_link).data, cls=DjangoJSONEncoder)
+         serializer = IssueLinkSerializer(issue_link, data=request.data, partial=True)
+         if serializer.is_valid():
++            should_crawl = (
++                "url" in serializer.validated_data
++                and serializer.validated_data["url"] != issue_link.url
++                and "metadata" not in serializer.validated_data
++            )
+             serializer.save()
+-            crawl_work_item_link_title.delay(serializer.data.get("id"), serializer.data.get("url"))
++            if should_crawl:
++                crawl_work_item_link_title.delay(
++                    serializer.data.get("id"),
++                    serializer.data.get("url"),
++                    serializer.instance.updated_at.isoformat(),
++                )
+             issue_activity.delay(
+                 type="link.activity.updated",
+                 requested_data=requested_data,
+diff --git a/apps/api/plane/app/views/issue/link.py b/apps/api/plane/app/views/issue/link.py
+index 549021230267f34c6668b6e1f23563537aa595a7..953146fda236bc97370c14a2d5e02f3f98a225f8 100644
+--- a/apps/api/plane/app/views/issue/link.py
++++ b/apps/api/plane/app/views/issue/link.py
+@@ -49,7 +49,11 @@ class IssueLinkViewSet(BaseViewSet):
+         serializer = IssueLinkSerializer(data=request.data)
+         if serializer.is_valid():
+             serializer.save(project_id=project_id, issue_id=issue_id)
+-            crawl_work_item_link_title.delay(serializer.data.get("id"), serializer.data.get("url"))
++            crawl_work_item_link_title.delay(
++                serializer.data.get("id"),
++                serializer.data.get("url"),
++                serializer.instance.updated_at.isoformat(),
++            )
+             issue_activity.delay(
+                 type="link.activity.created",
+                 requested_data=json.dumps(serializer.data, cls=DjangoJSONEncoder),
+@@ -75,8 +79,18 @@ class IssueLinkViewSet(BaseViewSet):
+ 
+         serializer = IssueLinkSerializer(issue_link, data=request.data, partial=True)
+         if serializer.is_valid():
++            should_crawl = (
++                "url" in serializer.validated_data
++                and serializer.validated_data["url"] != issue_link.url
++                and "metadata" not in serializer.validated_data
++            )
+             serializer.save()
+-            crawl_work_item_link_title.delay(serializer.data.get("id"), serializer.data.get("url"))
++            if should_crawl:
++                crawl_work_item_link_title.delay(
++                    serializer.data.get("id"),
++                    serializer.data.get("url"),
++                    serializer.instance.updated_at.isoformat(),
++                )
+ 
+             issue_activity.delay(
+                 type="link.activity.updated",
+diff --git a/apps/api/plane/bgtasks/work_item_link_task.py b/apps/api/plane/bgtasks/work_item_link_task.py
+index b15d0af9df67eb90dc8364271acc4375365df3f7..876bf9893ff72e96b3c834411d096b0e9e47adef 100644
+--- a/apps/api/plane/bgtasks/work_item_link_task.py
++++ b/apps/api/plane/bgtasks/work_item_link_task.py
+@@ -8,6 +8,7 @@ import socket
+ 
+ # Third party imports
+ from celery import shared_task
++from django.utils import timezone
+ import requests
+ from bs4 import BeautifulSoup
+ from urllib.parse import urlparse, urljoin
+@@ -246,14 +247,26 @@ def fetch_and_encode_favicon(
+ 
+ 
+ @shared_task
+-def crawl_work_item_link_title(id: str, url: str) -> None:
++def crawl_work_item_link_title(
++    id: str, url: str, expected_updated_at: Optional[str] = None
++) -> None:
++    if expected_updated_at is None:
++        logger.info(
++            "Skipped metadata crawl without a revision for IssueLink %s and url %s",
++            id,
++            url,
++        )
++        return
++
+     meta_data = crawl_work_item_link_title_and_favicon(url)
+ 
+-    try:
+-        issue_link = IssueLink.objects.get(id=id)
+-    except IssueLink.DoesNotExist:
+-        logger.warning(f"IssueLink not found for the id {id} and the url {url}")
+-        return
++    issue_links = IssueLink.objects.filter(id=id, url=url)
++    issue_links = issue_links.filter(updated_at=expected_updated_at)
+ 
+-    issue_link.metadata = meta_data
+-    issue_link.save()
++    updated = issue_links.update(metadata=meta_data, updated_at=timezone.now())
++    if not updated:
++        logger.info(
++            "Skipped stale metadata crawl for IssueLink %s and url %s",
++            id,
++            url,
++        )
+diff --git a/apps/api/plane/tests/unit/bg_tasks/test_work_item_link_task.py b/apps/api/plane/tests/unit/bg_tasks/test_work_item_link_task.py
+index 2599126ff49fed39837a55428845413d0c8a1ddb..738cd7adf60a0443ea605283c647f9fff81ce964 100644
+--- a/apps/api/plane/tests/unit/bg_tasks/test_work_item_link_task.py
++++ b/apps/api/plane/tests/unit/bg_tasks/test_work_item_link_task.py
+@@ -7,7 +7,11 @@ import ipaddress
+ import pytest
+ import requests
+ from unittest.mock import patch, MagicMock
+-from plane.bgtasks.work_item_link_task import safe_get, validate_url_ip
++from plane.bgtasks.work_item_link_task import (
++    crawl_work_item_link_title,
++    safe_get,
++    validate_url_ip,
++)
+ from plane.utils.ip_address import validate_url
+ 
+ 
+@@ -63,6 +67,70 @@ class TestValidateUrlIp:
+                 validate_url_ip("http://attacker.example.com")
+ 
+ 
++@pytest.mark.unit
++class TestCrawlWorkItemLinkTitle:
++    """The worker must not replace metadata after the dispatch state changes."""
++
++    @patch("plane.bgtasks.work_item_link_task.timezone.now")
++    @patch("plane.bgtasks.work_item_link_task.crawl_work_item_link_title_and_favicon")
++    @patch("plane.bgtasks.work_item_link_task.IssueLink.objects.filter")
++    def test_updates_metadata_at_the_expected_revision(
++        self, mock_filter, mock_crawl, mock_now
++    ):
++        metadata = {"title": "Plane", "url": "https://plane.so"}
++        expected_updated_at = "2026-09-03T10:00:00+00:00"
++        applied_at = MagicMock()
++        base_queryset = MagicMock()
++        guarded_queryset = MagicMock()
++        mock_filter.return_value = base_queryset
++        base_queryset.filter.return_value = guarded_queryset
++        guarded_queryset.update.return_value = 1
++        mock_crawl.return_value = metadata
++        mock_now.return_value = applied_at
++
++        crawl_work_item_link_title(
++            "link-id", "https://plane.so", expected_updated_at
++        )
++
++        mock_filter.assert_called_once_with(id="link-id", url="https://plane.so")
++        base_queryset.filter.assert_called_once_with(
++            updated_at=expected_updated_at
++        )
++        guarded_queryset.update.assert_called_once_with(
++            metadata=metadata, updated_at=applied_at
++        )
++
++    @patch("plane.bgtasks.work_item_link_task.crawl_work_item_link_title_and_favicon")
++    @patch("plane.bgtasks.work_item_link_task.IssueLink.objects.filter")
++    def test_skips_metadata_when_the_link_changed_after_dispatch(
++        self, mock_filter, mock_crawl
++    ):
++        base_queryset = MagicMock()
++        guarded_queryset = MagicMock()
++        mock_filter.return_value = base_queryset
++        base_queryset.filter.return_value = guarded_queryset
++        guarded_queryset.update.return_value = 0
++        mock_crawl.return_value = {"title": "Stale"}
++
++        crawl_work_item_link_title(
++            "link-id",
++            "https://plane.so",
++            "2026-09-03T10:00:00+00:00",
++        )
++
++        guarded_queryset.update.assert_called_once()
++
++    @patch("plane.bgtasks.work_item_link_task.crawl_work_item_link_title_and_favicon")
++    @patch("plane.bgtasks.work_item_link_task.IssueLink.objects.filter")
++    def test_skips_legacy_task_without_a_revision(self, mock_filter, mock_crawl):
++        mock_crawl.return_value = {"title": "Stale"}
++
++        crawl_work_item_link_title("link-id", "https://plane.so")
++
++        mock_crawl.assert_not_called()
++        mock_filter.assert_not_called()
++
++
+ @pytest.mark.unit
+ class TestValidateUrlAllowlist:
+     """Test validate_url allowlist permits specific private IPs."""

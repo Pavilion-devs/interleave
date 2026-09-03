@@ -663,7 +663,7 @@ export default function Home() {
                 : 'Connecting tools'}
         </span>
         <span className="version-chip">
-          EXPERIMENTAL <span>v0.3</span>
+          EXPERIMENTAL <span>v0.4</span>
         </span>
       </header>
       <div className="workspace">
@@ -676,6 +676,10 @@ export default function Home() {
           <Link className="nav-link" href="/todomvc" prefetch={false}>
             <Layers size={17} />
             TodoMVC integration<span>02</span>
+          </Link>
+          <Link className="nav-link" href="/plane" prefetch={false}>
+            <GitBranch size={17} />
+            Plane incident<span>03</span>
           </Link>
           <div className="sidebar-heading scenario-heading">
             CURRENT SCENARIO

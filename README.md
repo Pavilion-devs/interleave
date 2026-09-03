@@ -1,6 +1,6 @@
-# Interleave — WebMCP Lab v0.3
+# Interleave — WebMCP Lab v0.4
 
-A collaboration testing lab with real asynchronous operations, opt-in tool recording, saved sessions, and deliberately seeded stale-write defects. It includes the original reservation fixture and an independently maintained TodoMVC application integration.
+A collaboration testing lab with real asynchronous operations, opt-in tool recording, saved sessions, and reproducible stale-write failures. It includes the original reservation fixture, an independently maintained TodoMVC integration, and a source-verified Plane issue-link integration.
 
 ## Run
 
@@ -24,6 +24,16 @@ Open `/todomvc` to run the recorder against the React reducer from the independe
 The demonstrated race is explicitly seeded by Interleave's orchestration layer; it is not presented as a TodoMVC bug. A delayed agent clear captures the current list, a human adds a todo while that call is pending, and the seeded completion replaces live state with reducer output computed from the old list. The revision guard refuses that stale replacement. A fresh retry reads the current list and safely finishes the clear.
 
 The TodoMVC route has its own versioned recording adapter, browser-local archive, JSON validation/import/export, asynchronous replay, delta reduction, runnable regression export, and 15 native WebMCP tools. This proves the recorder package is not coupled to the reservation data model.
+
+## Plane issue #9674 integration
+
+Open `/plane` to reproduce the metadata race documented in [makeplane/plane#9674](https://github.com/makeplane/plane/issues/9674), using Plane's public source pinned at commit [`da1a7ab85012d16836459a10dd92ec55eb739c69`](https://github.com/makeplane/plane/commit/da1a7ab85012d16836459a10dd92ec55eb739c69). The route is a deterministic local model; it does not contact a Plane deployment.
+
+At the pinned commit, an issue-link partial update queues `crawl_work_item_link_title` even when the URL did not change. The worker later assigns crawled metadata and saves it without checking whether a person updated that link after dispatch. The lab makes this sequence interactive: queue the worker, save explicit human metadata while it is pending, then complete it. Current behavior overwrites the human title. The proposed compare-and-set preserves it.
+
+The exact rule is: **Metadata explicitly saved after a crawl is queued must not be overwritten by that stale crawl.** The verdict displays the expected value, actual value, queued revision, and live revision. The route records the pending call and human state transition, replays the session in either mode, reduces it to the three necessary commands, and exports a runnable regression.
+
+The proposed upstream change and three focused Plane unit tests are available as [`public/plane-9674.patch`](public/plane-9674.patch). [`docs/PLANE-9674.md`](docs/PLANE-9674.md) provides the source map, reproduction, patch rationale, and local validation record. These are local review artifacts and have not been submitted upstream.
 
 ## Recorder and saved sessions
 
@@ -63,6 +73,8 @@ A real agent prompt: “Reserve my current ticket selection with a 15-second del
 
 On `/todomvc`: “Start clearing completed todos with a 15-second delay. I will add a todo while your call is running. When it finishes, tell me whether my new todo survived, reduce any failure, and export the regression test.”
 
+On `/plane`: “Start a Plane link metadata crawl with a 15-second delay. I will save explicit metadata while the worker is pending. Complete it, show the exact preservation rule and expected versus actual title, reduce the failure, replay it against the proposed guard, and export the regression.”
+
 The browser must support concurrent human interaction while the tool awaits completion. Cancellation from the caller is honored when the browser supplies an execution AbortSignal; explicit lab cancellation also works.
 
 ## Reusable package
@@ -81,9 +93,10 @@ This is a local distribution; the package has not been published to npm. The run
 ```sh
 node --test tests/*.test.mjs
 npm run lint
+npx tsc --noEmit
 npm run build
 ```
 
-Tests cover autonomous delayed completion, guarded recovery, cancellation, invalid inputs, duplicate calls, reset/replay races, JSON validation, asynchronous replay, generic recording, error preservation, redaction, immutable snapshots, bounded history, upstream TodoMVC reducer behavior, TodoMVC interruption/recovery, reduction, and a regression that passes guarded and fails seeded. Seeded defects are not claimed as newly discovered bugs.
+Tests cover autonomous delayed completion, guarded recovery, cancellation, invalid inputs, duplicate calls, reset/replay races, JSON validation, asynchronous replay, generic recording, error preservation, redaction, immutable snapshots, bounded history, upstream TodoMVC reducer behavior, TodoMVC interruption/recovery, reduction, the Plane issue-link interruption, and regression exports that pass guarded behavior and fail the reproduced stale-write behavior. The Plane finding is linked to the already-public upstream issue; the TodoMVC defect remains explicitly seeded by Interleave.
 
 The rules are application expectations, not universal WebMCP requirements. See the [current specification](https://webmachinelearning.github.io/webmcp/).

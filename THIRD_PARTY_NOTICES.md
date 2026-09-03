@@ -32,3 +32,16 @@ SOFTWARE.
 
 The upstream reducer also embeds the Nano ID 3.0.2 non-secure routine under the
 MIT license, copyright 2017 Andrey Sitnik.
+
+## Plane public source
+
+Interleave's Plane integration models the issue-link update and metadata worker
+behavior documented in [makeplane/plane#9674](https://github.com/makeplane/plane/issues/9674).
+The source review and proposed patch are pinned to Plane commit
+[`da1a7ab85012d16836459a10dd92ec55eb739c69`](https://github.com/makeplane/plane/commit/da1a7ab85012d16836459a10dd92ec55eb739c69).
+Interleave does not bundle or execute a Plane deployment; the downloadable patch
+is a local review artifact for the public upstream source.
+
+Plane is licensed under the GNU Affero General Public License v3.0. The upstream
+license and notices remain available in the
+[`makeplane/plane` repository](https://github.com/makeplane/plane/blob/da1a7ab85012d16836459a10dd92ec55eb739c69/LICENSE).
