@@ -77,4 +77,4 @@ The upstream Python files pass syntax compilation and `git diff --check`. Interl
 
 ## Publication status
 
-The patch exists only in the local shallow clone and this Interleave repository. No Plane issue, pull request, comment, branch, message, or deployment has been created or modified. Upstream publication requires the user's review and approval of the finished patch.
+The patch exists only in the local shallow clone and this Interleave repository. No upstream Plane issue, pull request, comment, branch, message, or deployment has been created or modified. Upstream publication requires the user's review and approval of the finished patch.
