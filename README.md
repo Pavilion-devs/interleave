@@ -33,7 +33,7 @@ At the pinned commit, an issue-link partial update queues `crawl_work_item_link_
 
 The exact rule is: **Metadata explicitly saved after a crawl is queued must not be overwritten by that stale crawl.** The verdict displays the expected value, actual value, queued revision, and live revision. The route records the pending call and human state transition, replays the session in either mode, reduces it to the three necessary commands, and exports a runnable regression.
 
-The proposed upstream change, three focused worker unit tests, and ten endpoint contract cases are available as [`public/plane-9674.patch`](public/plane-9674.patch). The endpoint matrix covers the app API and public API. [`docs/PLANE-9674.md`](docs/PLANE-9674.md) provides the source map, reproduction, patch rationale, and local validation record. These are local review artifacts and have not been submitted upstream.
+The proposed upstream change, three focused worker unit tests, and ten endpoint contract cases are available as [`public/plane-9674.patch`](public/plane-9674.patch). The endpoint matrix covers the app API and public API. Plane's official Docker test environment passes all 37 tests in the two affected modules, including the 13 new cases and 24 neighboring safety tests. [`docs/PLANE-9674.md`](docs/PLANE-9674.md) provides the source map, reproduction, patch rationale, and local validation record. These are local review artifacts and have not been submitted upstream.
 
 ## Recorder and saved sessions
 

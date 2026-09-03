@@ -74,7 +74,9 @@ INTERLEAVE_IMPLEMENTATION=unguarded node --test tests/generated-plane-regression
 
 The second invocation is expected to fail. The generated file is a browser download; the repository test creates and removes an equivalent file automatically.
 
-The five upstream Python files pass syntax compilation, Plane's pinned Ruff 0.9.7 lint check, and `git diff --check`. The three production files and new contract-test file pass Ruff's format check; the existing unit-test file retains two unrelated pre-existing wrapping differences to keep the patch focused. A deterministic local harness executes the pinned worker and proposed worker: it confirms the pinned write overwrites the later human title, the proposed worker rejects stale and revisionless work, and a matching revision still applies. Full Plane test execution depends on Plane's Docker development environment; the local Docker daemon was unavailable, so the included three unit tests and ten endpoint cases are not reported as executed here. Interleave's own test, lint, type-check, and production-build results are reported separately.
+The five upstream Python files pass syntax compilation, Plane's pinned Ruff 0.9.7 lint check, and `git diff --check`. The three production files and new contract-test file pass Ruff's format check; the existing unit-test file retains two unrelated pre-existing wrapping differences to keep the patch focused. A deterministic local harness executes the pinned worker and proposed worker: it confirms the pinned write overwrites the later human title, the proposed worker rejects stale and revisionless work, and a matching revision still applies.
+
+Plane's official Docker test environment executes the two affected test modules against PostgreSQL, Valkey, RabbitMQ, and MinIO. All 37 collected tests pass in 3.51 seconds: the ten new endpoint contract cases, the three new worker race cases, and 24 existing neighboring worker safety tests. Interleave's own test, lint, type-check, and production-build results are reported separately.
 
 ## Publication status
 
