@@ -1,0 +1,73 @@
+<template>
+  <style>
+    
+@font-face{font-family:Geist;src:url("assets/fonts/geist-latin.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
+@font-face{font-family:"Geist Mono";src:url("assets/fonts/geist-mono-latin.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
+    *{box-sizing:border-box}
+    #root{position:relative;width:1920px;height:1080px;overflow:hidden;container-type:size;color:#E7EDEB;font-family:Geist,sans-serif}
+    #root .clip{position:absolute;inset:0;overflow:hidden}
+    #root .f01-silent-overwrite-bg{background:#191F1C}
+    #root .f01-silent-overwrite-stage{position:absolute;inset:0 0 180px 0;padding:74px 82px}
+    #root .f01-silent-overwrite-kicker{font:600 22px/1 "Geist Mono",monospace;letter-spacing:.15em;text-transform:uppercase;color:#A8AFB8}
+    #root .f01-silent-overwrite-spike{color:#737BEB;margin-right:14px}
+    #root .f01-silent-overwrite-display{font-size:92px;line-height:.98;letter-spacing:-.045em;font-weight:480}
+    #root .f01-silent-overwrite-headline{font-size:68px;line-height:1.02;letter-spacing:-.035em;font-weight:470}
+    #root .f01-silent-overwrite-mono{font-family:"Geist Mono",monospace}
+    #root .f01-silent-overwrite-surface{background:#07092A;border:1px solid rgba(231,237,235,.18);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.16);overflow:hidden}
+    #root .f01-silent-overwrite-chip{display:inline-flex;align-items:center;border:1px solid rgba(231,237,235,.18);border-radius:999px;padding:10px 15px;background:#202723;font:550 18px/1 "Geist Mono",monospace;color:#DADFE1}
+    #root .f01-silent-overwrite-label{font:600 17px/1 "Geist Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:#A8AFB8}
+    #root .f01-silent-overwrite-muted{color:#A8AFB8}
+    #root .f01-silent-overwrite-rule{height:1px;background:rgba(231,237,235,.18);transform-origin:left center}
+    #root .f01-silent-overwrite-violet{color:#9EA5FF}
+    #root .f01-silent-overwrite-red{color:#F29B8F}
+    #root .f01-silent-overwrite-green{color:#A6E6BB}
+    #root img{display:block}
+    
+    #root .f01-silent-overwrite-copy{position:absolute;left:82px;top:82px;width:790px}
+    #root .f01-silent-overwrite-typebox{position:absolute;left:82px;top:285px;width:790px;height:230px;border-left:1px solid rgba(231,237,235,.22);padding-left:34px;overflow:hidden}
+    #root .f01-silent-overwrite-value{position:absolute;left:34px;top:18px;width:730px;font-size:68px;line-height:1.3;letter-spacing:-.04em;font-weight:480;white-space:nowrap;overflow:hidden}
+    #root .f01-silent-overwrite-caret{display:inline-block;width:8px;height:70px;background:#737BEB;margin-left:8px;vertical-align:-10px}
+    #root .f01-silent-overwrite-events{position:absolute;left:116px;top:568px;display:flex;gap:12px}
+    #root .f01-silent-overwrite-event{padding:13px 16px;border:1px solid rgba(231,237,235,.15);border-radius:7px;background:#202723;font:600 17px/1 "Geist Mono",monospace;color:#B4BDB8}
+    #root .f01-silent-overwrite-proof{position:absolute;right:82px;top:72px;width:860px;height:690px}
+    #root .f01-silent-overwrite-proof img{width:100%;height:100%;object-fit:cover;object-position:center top}
+    #root .f01-silent-overwrite-proofveil{position:absolute;inset:0;background:rgba(7,9,42,.18)}
+    #root .f01-silent-overwrite-verdict{position:absolute;right:126px;bottom:72px;width:760px;padding:22px 25px;border:1px solid rgba(242,155,143,.45);border-radius:8px;background:#2A1F22}
+    #root .f01-silent-overwrite-verdictrow{display:flex;justify-content:space-between;gap:30px;margin-top:13px;font:500 18px/1.25 "Geist Mono",monospace}
+  
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <div data-hf-id="hf-hiuu" id="root" data-composition-id="01-silent-overwrite" data-start="0" data-duration="10.5" data-track-index="0" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-md1k" id="f01-silent-overwrite-bg" class="clip f01-silent-overwrite-bg" data-start="0" data-duration="10.5" data-track-index="0"></div>
+    <div data-hf-id="hf-cp8h" id="f01-silent-overwrite-stage" class="clip f01-silent-overwrite-stage" data-start="0" data-duration="10.5" data-track-index="1">
+    <div data-hf-id="hf-yuiz" class="f01-silent-overwrite-copy"><div data-hf-id="hf-2iji" class="f01-silent-overwrite-kicker"><span data-hf-id="hf-bl4m" class="f01-silent-overwrite-spike">✱</span>the race nobody sees</div></div>
+    <div data-hf-id="hf-5gfz" class="f01-silent-overwrite-typebox">
+      <div data-hf-id="hf-1u8t" id="f01-silent-overwrite-human" class="f01-silent-overwrite-value">Human verified runbook<span data-hf-id="hf-ypdg" class="f01-silent-overwrite-caret"></span></div>
+      <div data-hf-id="hf-5618" id="f01-silent-overwrite-worker" class="f01-silent-overwrite-value f01-silent-overwrite-red">Plane documentation<span data-hf-id="hf-swek" class="f01-silent-overwrite-caret"></span></div>
+    </div>
+    <div data-hf-id="hf-guz3" class="f01-silent-overwrite-events">
+      <div data-hf-id="hf-8qpc" id="f01-silent-overwrite-e1" class="f01-silent-overwrite-event">NATIVE · dispatch</div>
+      <div data-hf-id="hf-v7nx" id="f01-silent-overwrite-e2" class="f01-silent-overwrite-event">MANUAL · save</div>
+      <div data-hf-id="hf-fuj1" id="f01-silent-overwrite-e3" class="f01-silent-overwrite-event">NATIVE · overwrite</div>
+    </div>
+    <div data-hf-id="hf-n01f" id="f01-silent-overwrite-proof" class="f01-silent-overwrite-proof f01-silent-overwrite-surface"><img data-hf-id="hf-jlpp" src="assets/native-failure-verdict.png" alt="Interleave browser-verified Plane failure"><div data-hf-id="hf-a31u" class="f01-silent-overwrite-proofveil"></div></div>
+    <div data-hf-id="hf-2nki" id="f01-silent-overwrite-verdict" class="f01-silent-overwrite-verdict"><div data-hf-id="hf-ys4d" class="f01-silent-overwrite-label f01-silent-overwrite-red">Rule violated</div><div data-hf-id="hf-ayxl" class="f01-silent-overwrite-verdictrow"><span data-hf-id="hf-68vx">EXPECTED</span><b data-hf-id="hf-qw1y">Human verified runbook</b></div><div data-hf-id="hf-gz71" class="f01-silent-overwrite-verdictrow"><span data-hf-id="hf-40q3">ACTUAL</span><b data-hf-id="hf-qto4" class="f01-silent-overwrite-red">Plane documentation</b></div></div>
+  </div>
+  </div>
+  <script>
+    window.__timelines=window.__timelines||{};
+    const tl=gsap.timeline({paused:true,defaults:{ease:"power3.out"}});
+    
+    tl.fromTo("#f01-silent-overwrite-human",{clipPath:"inset(0 100% 0 0)"},{clipPath:"inset(0 0% 0 0)",duration:1.9,ease:"steps(24)"},0.1)
+      .set("#f01-silent-overwrite-worker",{clipPath:"inset(0 100% 0 0)"},0)
+      .fromTo("#f01-silent-overwrite-e1",{opacity:0,y:20},{opacity:1,y:0,duration:.45},1.4)
+      .fromTo("#f01-silent-overwrite-e2",{opacity:0,y:20},{opacity:1,y:0,duration:.45},2.8)
+      .to("#f01-silent-overwrite-human",{clipPath:"inset(0 100% 0 0)",duration:1.0,ease:"steps(18)"},3.15)
+      .fromTo("#f01-silent-overwrite-worker",{clipPath:"inset(0 100% 0 0)"},{clipPath:"inset(0 0% 0 0)",duration:1.35,ease:"steps(19)"},4.1)
+      .fromTo("#f01-silent-overwrite-e3",{opacity:0,y:20},{opacity:1,y:0,duration:.45},5.25)
+      .fromTo("#f01-silent-overwrite-proof",{opacity:0,x:70},{opacity:1,x:0,duration:.85},6.55)
+      .fromTo("#f01-silent-overwrite-verdict",{opacity:0,y:28},{opacity:1,y:0,duration:.65},7.15);
+  
+    window.__timelines["01-silent-overwrite"]=tl;
+  </script>
+</template>

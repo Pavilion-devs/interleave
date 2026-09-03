@@ -1,0 +1,59 @@
+<template>
+  <style>
+    
+@font-face{font-family:Geist;src:url("assets/fonts/geist-latin.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
+@font-face{font-family:"Geist Mono";src:url("assets/fonts/geist-mono-latin.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
+    *{box-sizing:border-box}
+    #root{position:relative;width:1920px;height:1080px;overflow:hidden;container-type:size;color:#E7EDEB;font-family:Geist,sans-serif}
+    #root .clip{position:absolute;inset:0;overflow:hidden}
+    #root .f03-native-source-bg{background:#191F1C}
+    #root .f03-native-source-stage{position:absolute;inset:0 0 180px 0;padding:74px 82px}
+    #root .f03-native-source-kicker{font:600 22px/1 "Geist Mono",monospace;letter-spacing:.15em;text-transform:uppercase;color:#A8AFB8}
+    #root .f03-native-source-spike{color:#737BEB;margin-right:14px}
+    #root .f03-native-source-display{font-size:92px;line-height:.98;letter-spacing:-.045em;font-weight:480}
+    #root .f03-native-source-headline{font-size:68px;line-height:1.02;letter-spacing:-.035em;font-weight:470}
+    #root .f03-native-source-mono{font-family:"Geist Mono",monospace}
+    #root .f03-native-source-surface{background:#07092A;border:1px solid rgba(231,237,235,.18);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.16);overflow:hidden}
+    #root .f03-native-source-chip{display:inline-flex;align-items:center;border:1px solid rgba(231,237,235,.18);border-radius:999px;padding:10px 15px;background:#202723;font:550 18px/1 "Geist Mono",monospace;color:#DADFE1}
+    #root .f03-native-source-label{font:600 17px/1 "Geist Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:#A8AFB8}
+    #root .f03-native-source-muted{color:#A8AFB8}
+    #root .f03-native-source-rule{height:1px;background:rgba(231,237,235,.18);transform-origin:left center}
+    #root .f03-native-source-violet{color:#9EA5FF}
+    #root .f03-native-source-red{color:#F29B8F}
+    #root .f03-native-source-green{color:#A6E6BB}
+    #root img{display:block}
+    
+    #root .f03-native-source-copy{position:absolute;left:82px;top:82px;width:610px}
+    #root .f03-native-source-copy h1{margin:38px 0 0;font-size:74px;line-height:1.02;letter-spacing:-.04em;font-weight:470}
+    #root .f03-native-source-copy p{margin-top:28px;font-size:25px;line-height:1.45;color:#AEB9B3}
+    #root .f03-native-source-proof{position:absolute;right:82px;top:58px;width:1050px;height:720px}
+    #root .f03-native-source-proof img{width:100%;height:100%;object-fit:cover;object-position:center top}
+    #root .f03-native-source-overlay{position:absolute;inset:0;background:rgba(7,9,42,.08)}
+    #root .f03-native-source-stack{position:absolute;left:765px;top:110px;display:grid;gap:16px;width:490px}
+    #root .f03-native-source-card{padding:20px 22px;border:1px solid rgba(231,237,235,.22);border-radius:8px;background:rgba(17,22,18,.96)}
+    #root .f03-native-source-card b{display:block;margin-top:11px;font-size:29px;font-weight:520}
+    #root .f03-native-source-card code{display:block;margin-top:10px;font:500 17px/1.35 "Geist Mono",monospace;color:#C8D0CB;overflow-wrap:anywhere}
+  
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <div data-hf-id="hf-fon5" id="root" data-composition-id="03-native-source" data-start="0" data-duration="13.9" data-track-index="0" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-tr29" id="f03-native-source-bg" class="clip f03-native-source-bg" data-start="0" data-duration="13.9" data-track-index="0"></div>
+    <div data-hf-id="hf-cmje" id="f03-native-source-stage" class="clip f03-native-source-stage" data-start="0" data-duration="13.9" data-track-index="1">
+    <div data-hf-id="hf-a0p7" class="f03-native-source-copy"><div data-hf-id="hf-pjeo" class="f03-native-source-kicker"><span data-hf-id="hf-785g" class="f03-native-source-spike">✱</span>real source · safe boundary</div><h1 data-hf-id="hf-jeng">Proof judges can inspect.</h1><p data-hf-id="hf-bwk9">A public Plane issue. A pinned commit. A deterministic local fixture.</p></div>
+    <div data-hf-id="hf-1ewp" id="f03-native-source-proof" class="f03-native-source-proof f03-native-source-surface"><img data-hf-id="hf-l9jl" src="assets/native-failure-top.png" alt="Source-verified Interleave Plane lab"><div data-hf-id="hf-wbwc" class="f03-native-source-overlay"></div></div>
+    <div data-hf-id="hf-0lb8" class="f03-native-source-stack"><div data-hf-id="hf-24nk" id="f03-native-source-c1" class="f03-native-source-card"><span data-hf-id="hf-9y6x" class="f03-native-source-label">PUBLIC SOURCE</span><b data-hf-id="hf-9t88">Plane #9674</b><code data-hf-id="hf-877g">da1a7ab85012d16836459a10dd92ec55eb739c69</code></div><div data-hf-id="hf-d057" id="f03-native-source-c2" class="f03-native-source-card"><span data-hf-id="hf-bxaz" class="f03-native-source-label">WEBMCP</span><b data-hf-id="hf-xdup" class="f03-native-source-violet">9 native tools</b><code data-hf-id="hf-rns9">document.modelContext</code></div><div data-hf-id="hf-6ufe" id="f03-native-source-c3" class="f03-native-source-card"><span data-hf-id="hf-prxn" class="f03-native-source-label">BOUNDARY</span><b data-hf-id="hf-gttp">0 live systems</b><code data-hf-id="hf-35pr">fixture · mock · local replay</code></div></div>
+  </div>
+  </div>
+  <script>
+    window.__timelines=window.__timelines||{};
+    const tl=gsap.timeline({paused:true,defaults:{ease:"power3.out"}});
+    
+    tl.fromTo("#f03-native-source-proof",{opacity:0,x:48},{opacity:1,x:0,duration:.75},.05)
+      .fromTo(".f03-native-source-copy",{opacity:0,y:28},{opacity:1,y:0,duration:.65},.2)
+      .fromTo("#f03-native-source-c1",{opacity:0,x:35},{opacity:1,x:0,duration:.55},2.7)
+      .fromTo("#f03-native-source-c2",{opacity:0,x:35},{opacity:1,x:0,duration:.55},5.05)
+      .fromTo("#f03-native-source-c3",{opacity:0,x:35},{opacity:1,x:0,duration:.55},7.65);
+  
+    window.__timelines["03-native-source"]=tl;
+  </script>
+</template>

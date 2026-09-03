@@ -1,0 +1,9 @@
+.venv/
+snapshots/
+.waveform-cache/
+.thumbnails/
+.hyperframes/frame-packets/
+capture/
+capture-blocked-*/
+CLAUDE.md
+:memory:.ses

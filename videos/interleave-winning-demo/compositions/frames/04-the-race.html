@@ -1,0 +1,65 @@
+<template>
+  <style>
+    
+@font-face{font-family:Geist;src:url("assets/fonts/geist-latin.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
+@font-face{font-family:"Geist Mono";src:url("assets/fonts/geist-mono-latin.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
+    *{box-sizing:border-box}
+    #root{position:relative;width:1920px;height:1080px;overflow:hidden;container-type:size;color:#E7EDEB;font-family:Geist,sans-serif}
+    #root .clip{position:absolute;inset:0;overflow:hidden}
+    #root .f04-the-race-bg{background:#191F1C}
+    #root .f04-the-race-stage{position:absolute;inset:0 0 180px 0;padding:74px 82px}
+    #root .f04-the-race-kicker{font:600 22px/1 "Geist Mono",monospace;letter-spacing:.15em;text-transform:uppercase;color:#A8AFB8}
+    #root .f04-the-race-spike{color:#737BEB;margin-right:14px}
+    #root .f04-the-race-display{font-size:92px;line-height:.98;letter-spacing:-.045em;font-weight:480}
+    #root .f04-the-race-headline{font-size:68px;line-height:1.02;letter-spacing:-.035em;font-weight:470}
+    #root .f04-the-race-mono{font-family:"Geist Mono",monospace}
+    #root .f04-the-race-surface{background:#07092A;border:1px solid rgba(231,237,235,.18);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.16);overflow:hidden}
+    #root .f04-the-race-chip{display:inline-flex;align-items:center;border:1px solid rgba(231,237,235,.18);border-radius:999px;padding:10px 15px;background:#202723;font:550 18px/1 "Geist Mono",monospace;color:#DADFE1}
+    #root .f04-the-race-label{font:600 17px/1 "Geist Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:#A8AFB8}
+    #root .f04-the-race-muted{color:#A8AFB8}
+    #root .f04-the-race-rule{height:1px;background:rgba(231,237,235,.18);transform-origin:left center}
+    #root .f04-the-race-violet{color:#9EA5FF}
+    #root .f04-the-race-red{color:#F29B8F}
+    #root .f04-the-race-green{color:#A6E6BB}
+    #root img{display:block}
+    
+    #root .f04-the-race-photo{position:absolute;inset:0;opacity:.22}
+    #root .f04-the-race-photo img{width:100%;height:100%;object-fit:cover}
+    #root .f04-the-race-world{position:absolute;left:0;top:0;width:4560px;height:820px;transform-origin:left center}
+    #root .f04-the-race-line{position:absolute;left:240px;top:415px;width:3900px;height:1px;background:rgba(231,237,235,.24)}
+    #root .f04-the-race-station{position:absolute;top:132px;width:1050px;height:545px;padding:44px 48px;border:1px solid rgba(231,237,235,.19);border-radius:12px;background:#111612}
+    #root .f04-the-race-station:after{content:"";position:absolute;left:50%;bottom:-21px;width:40px;height:40px;margin-left:-20px;border-radius:50%;background:#191F1C;border:1px solid rgba(231,237,235,.32)}
+    #root .f04-the-race-station h2{margin:36px 0 0;font-size:70px;line-height:1.02;letter-spacing:-.04em;font-weight:470}
+    #root .f04-the-race-station p{font:500 22px/1.55 "Geist Mono",monospace;color:#ABB6B0;margin-top:34px}
+    #root .f04-the-race-station code{display:inline-block;margin-top:24px;padding:13px 16px;border:1px solid rgba(231,237,235,.16);border-radius:7px;color:#E7EDEB;font:500 18px/1 "Geist Mono",monospace}
+    #root .f04-the-race-s1{left:220px}.f04-the-race-s2{left:1700px}.f04-the-race-s3{left:3180px}
+    #root .f04-the-race-latency{position:absolute;left:330px;top:730px;width:3600px;height:9px;background:#2D3531;border-radius:999px;overflow:hidden}
+    #root .f04-the-race-latencyfill{width:100%;height:100%;background:#737BEB;transform-origin:left center}
+    #root .f04-the-race-all{position:absolute;left:614px;top:32px;font-size:62px;letter-spacing:-.04em;opacity:0}
+  
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <div data-hf-id="hf-np6v" id="root" data-composition-id="04-the-race" data-start="0" data-duration="17" data-track-index="0" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-dx14" id="f04-the-race-bg" class="clip f04-the-race-bg" data-start="0" data-duration="17" data-track-index="0"></div>
+    <div data-hf-id="hf-8e17" id="f04-the-race-stage" class="clip f04-the-race-stage" data-start="0" data-duration="17" data-track-index="1">
+    <div data-hf-id="hf-c3lt" class="f04-the-race-photo"><img data-hf-id="hf-d70r" src="assets/native-failure-verdict.png" alt="Recorded native manual native event order"></div>
+    <div data-hf-id="hf-4jx7" id="f04-the-race-world" class="f04-the-race-world" data-layout-allow-overflow=""><div data-hf-id="hf-130d" class="f04-the-race-line"></div><div data-hf-id="hf-u1iz" id="f04-the-race-s1" class="f04-the-race-station f04-the-race-s1"><span data-hf-id="hf-mb8v" class="f04-the-race-label">NATIVE · 00:25.424</span><h2 data-hf-id="hf-fox8">Dispatch the crawler.</h2><p data-hf-id="hf-sz9x">plane_patch_link_slow</p><code data-hf-id="hf-48tw">status · pending</code></div><div data-hf-id="hf-by5t" id="f04-the-race-s2" class="f04-the-race-station f04-the-race-s2"><span data-hf-id="hf-0obt" class="f04-the-race-label">MANUAL · +2.989s</span><h2 data-hf-id="hf-4bio">Human verified runbook</h2><p data-hf-id="hf-wwcr">Save metadata while the worker waits.</p><code data-hf-id="hf-lo3k" class="f04-the-race-violet">human intent · committed</code></div><div data-hf-id="hf-dzcn" id="f04-the-race-s3" class="f04-the-race-station f04-the-race-s3"><span data-hf-id="hf-0jno" class="f04-the-race-label">NATIVE · +8.002s</span><h2 data-hf-id="hf-f4kp" class="f04-the-race-red">Plane documentation</h2><p data-hf-id="hf-1bjp">The fulfilled worker writes its stale result.</p><code data-hf-id="hf-1b9a">duration · 8.006s</code></div><div data-hf-id="hf-970b" class="f04-the-race-latency"><div data-hf-id="hf-zjau" id="f04-the-race-latencyfill" class="f04-the-race-latencyfill"></div></div><div data-hf-id="hf-rszm" id="f04-the-race-all" class="f04-the-race-all">native&#160;&#160;→&#160;&#160;<span data-hf-id="hf-of6n" class="f04-the-race-violet">manual</span>&#160;&#160;→&#160;&#160;native</div></div>
+  </div>
+  </div>
+  <script>
+    window.__timelines=window.__timelines||{};
+    const tl=gsap.timeline({paused:true,defaults:{ease:"power3.out"}});
+    
+    tl.set("#f04-the-race-world",{x:0,scale:1},0)
+      .fromTo("#f04-the-race-s1",{opacity:0,y:40},{opacity:1,y:0,duration:.7},.05)
+      .fromTo("#f04-the-race-latencyfill",{scaleX:0},{scaleX:1,duration:11.6,ease:"none"},.15)
+      .to("#f04-the-race-world",{x:-1480,duration:1.55,ease:"power3.inOut"},4.75)
+      .fromTo("#f04-the-race-s2",{opacity:0,y:40},{opacity:1,y:0,duration:.65},5.85)
+      .to("#f04-the-race-world",{x:-2960,duration:1.55,ease:"power3.inOut"},9.55)
+      .fromTo("#f04-the-race-s3",{opacity:0,y:40},{opacity:1,y:0,duration:.65},10.7)
+      .to("#f04-the-race-world",{x:96,y:0,scale:.39,duration:1.25,ease:"power4.out"},14.15)
+      .to("#f04-the-race-all",{opacity:1,duration:.45},15.0);
+  
+    window.__timelines["04-the-race"]=tl;
+  </script>
+</template>
