@@ -45,14 +45,15 @@ release()
 
 ## Proposed Plane patch
 
-The local patch is [`public/plane-9674.patch`](../public/plane-9674.patch). It changes four upstream files:
+The local patch is [`public/plane-9674.patch`](../public/plane-9674.patch). It changes five upstream files:
 
 - Both update endpoints queue a crawl only when the URL is explicitly changed and metadata is not explicitly supplied.
 - Create endpoints pass the saved row's `updated_at` value to the worker.
 - The worker accepts old two-argument queued messages during a rolling deployment but safely skips them because they have no dispatch revision to compare.
 - New tasks filter by ID, URL, and the expected `updated_at` revision before writing.
 - The final write is one atomic queryset update. A zero-row update means the task is stale and is logged instead of overwriting newer state.
-- Three unit tests verify a matching revision is updated, a changed revision is skipped, and an old task without a revision cannot write.
+- Three worker unit tests verify a matching revision is updated, a changed revision is skipped, and an old task without a revision cannot write.
+- Ten endpoint contract cases run the same five behaviors through the app API and public API: title-only updates do not crawl, metadata-only updates do not crawl, URL updates dispatch with the saved revision, URL-plus-metadata updates preserve the explicit metadata without crawling, and creates dispatch with the saved revision.
 
 Checking both dispatch and completion matters. Avoiding unnecessary crawls removes the common trigger, while the atomic completion guard protects against races that happen after a legitimate URL change.
 
@@ -73,7 +74,7 @@ INTERLEAVE_IMPLEMENTATION=unguarded node --test tests/generated-plane-regression
 
 The second invocation is expected to fail. The generated file is a browser download; the repository test creates and removes an equivalent file automatically.
 
-The upstream Python files pass syntax compilation and `git diff --check`. Interleave's full test, lint, type-check, and production-build results are recorded in the final review report after they run. Full Plane test execution depends on Plane's Docker development environment and is reported separately rather than implied.
+The five upstream Python files pass syntax compilation, Plane's pinned Ruff 0.9.7 lint check, and `git diff --check`. The three production files and new contract-test file pass Ruff's format check; the existing unit-test file retains two unrelated pre-existing wrapping differences to keep the patch focused. A deterministic local harness executes the pinned worker and proposed worker: it confirms the pinned write overwrites the later human title, the proposed worker rejects stale and revisionless work, and a matching revision still applies. Full Plane test execution depends on Plane's Docker development environment; the local Docker daemon was unavailable, so the included three unit tests and ten endpoint cases are not reported as executed here. Interleave's own test, lint, type-check, and production-build results are reported separately.
 
 ## Publication status
 

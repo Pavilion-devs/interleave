@@ -73,7 +73,7 @@ index 549021230267f34c6668b6e1f23563537aa595a7..953146fda236bc97370c14a2d5e02f3f
              issue_activity.delay(
                  type="link.activity.updated",
 diff --git a/apps/api/plane/bgtasks/work_item_link_task.py b/apps/api/plane/bgtasks/work_item_link_task.py
-index b15d0af9df67eb90dc8364271acc4375365df3f7..876bf9893ff72e96b3c834411d096b0e9e47adef 100644
+index b15d0af9df67eb90dc8364271acc4375365df3f7..083b52a5468f406cf6fee3faa3cdc0e7593f74a6 100644
 --- a/apps/api/plane/bgtasks/work_item_link_task.py
 +++ b/apps/api/plane/bgtasks/work_item_link_task.py
 @@ -8,6 +8,7 @@ import socket
@@ -84,14 +84,12 @@ index b15d0af9df67eb90dc8364271acc4375365df3f7..876bf9893ff72e96b3c834411d096b0e
  import requests
  from bs4 import BeautifulSoup
  from urllib.parse import urlparse, urljoin
-@@ -246,14 +247,26 @@ def fetch_and_encode_favicon(
+@@ -246,14 +247,24 @@ def fetch_and_encode_favicon(
  
  
  @shared_task
 -def crawl_work_item_link_title(id: str, url: str) -> None:
-+def crawl_work_item_link_title(
-+    id: str, url: str, expected_updated_at: Optional[str] = None
-+) -> None:
++def crawl_work_item_link_title(id: str, url: str, expected_updated_at: Optional[str] = None) -> None:
 +    if expected_updated_at is None:
 +        logger.info(
 +            "Skipped metadata crawl without a revision for IssueLink %s and url %s",
@@ -119,8 +117,243 @@ index b15d0af9df67eb90dc8364271acc4375365df3f7..876bf9893ff72e96b3c834411d096b0e
 +            id,
 +            url,
 +        )
+diff --git a/apps/api/plane/tests/contract/app/test_issue_link_crawl_dispatch.py b/apps/api/plane/tests/contract/app/test_issue_link_crawl_dispatch.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..0490cac0b9324545ec1e7c0ba23fc96d637976b8
+--- /dev/null
++++ b/apps/api/plane/tests/contract/app/test_issue_link_crawl_dispatch.py
+@@ -0,0 +1,229 @@
++# Copyright (c) 2023-present Plane Software, Inc. and contributors
++# SPDX-License-Identifier: AGPL-3.0-only
++# See the LICENSE file for details.
++
++from unittest.mock import patch
++
++import pytest
++from rest_framework import status
++
++from plane.db.models import Issue, IssueLink, Project, ProjectMember
++
++
++SURFACES = [
++    pytest.param(
++        "session_client",
++        "/api/workspaces/{slug}/projects/{project_id}/issues/{issue_id}/issue-links/",
++        "plane.app.views.issue.link.crawl_work_item_link_title",
++        "plane.app.views.issue.link.issue_activity",
++        id="app-api",
++    ),
++    pytest.param(
++        "api_key_client",
++        "/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/links/",
++        "plane.api.views.issue.crawl_work_item_link_title",
++        "plane.api.views.issue.issue_activity",
++        id="public-api",
++    ),
++]
++
++
++@pytest.fixture
++def project(db, workspace, create_user):
++    project = Project.objects.create(
++        name="Issue Link Project",
++        identifier="ILP",
++        workspace=workspace,
++        created_by=create_user,
++    )
++    ProjectMember.objects.create(
++        project=project,
++        member=create_user,
++        workspace=workspace,
++        role=20,
++        is_active=True,
++    )
++    return project
++
++
++@pytest.fixture
++def issue(db, workspace, project, create_user):
++    return Issue.objects.create(
++        name="Issue link crawl dispatch",
++        workspace=workspace,
++        project=project,
++        created_by=create_user,
++    )
++
++
++@pytest.fixture
++def issue_link(db, workspace, project, issue, create_user):
++    return IssueLink.objects.create(
++        title="Original title",
++        url="https://example.com/original",
++        metadata={"title": "Human title"},
++        workspace=workspace,
++        project=project,
++        issue=issue,
++        created_by=create_user,
++    )
++
++
++def _client(request, client_fixture):
++    return request.getfixturevalue(client_fixture)
++
++
++def _list_url(pattern, workspace, project, issue):
++    return pattern.format(
++        slug=workspace.slug,
++        project_id=project.id,
++        issue_id=issue.id,
++    )
++
++
++def _detail_url(pattern, workspace, project, issue, issue_link):
++    return f"{_list_url(pattern, workspace, project, issue)}{issue_link.id}/"
++
++
++@pytest.mark.contract
++class TestIssueLinkCrawlDispatch:
++    @pytest.mark.django_db
++    @pytest.mark.parametrize("client_fixture,url_pattern,task_path,activity_path", SURFACES)
++    def test_title_only_update_does_not_queue_crawl(
++        self,
++        request,
++        client_fixture,
++        url_pattern,
++        task_path,
++        activity_path,
++        workspace,
++        project,
++        issue,
++        issue_link,
++    ):
++        url = _detail_url(url_pattern, workspace, project, issue, issue_link)
++
++        with patch(task_path) as mock_crawl, patch(activity_path):
++            response = _client(request, client_fixture).patch(url, {"title": "Renamed link"}, format="json")
++
++        assert response.status_code == status.HTTP_200_OK
++        issue_link.refresh_from_db()
++        assert issue_link.title == "Renamed link"
++        assert issue_link.metadata == {"title": "Human title"}
++        mock_crawl.delay.assert_not_called()
++
++    @pytest.mark.django_db
++    @pytest.mark.parametrize("client_fixture,url_pattern,task_path,activity_path", SURFACES)
++    def test_metadata_update_does_not_queue_crawl(
++        self,
++        request,
++        client_fixture,
++        url_pattern,
++        task_path,
++        activity_path,
++        workspace,
++        project,
++        issue,
++        issue_link,
++    ):
++        url = _detail_url(url_pattern, workspace, project, issue, issue_link)
++        metadata = {"title": "Explicit metadata"}
++
++        with patch(task_path) as mock_crawl, patch(activity_path):
++            response = _client(request, client_fixture).patch(url, {"metadata": metadata}, format="json")
++
++        assert response.status_code == status.HTTP_200_OK
++        issue_link.refresh_from_db()
++        assert issue_link.metadata == metadata
++        mock_crawl.delay.assert_not_called()
++
++    @pytest.mark.django_db
++    @pytest.mark.parametrize("client_fixture,url_pattern,task_path,activity_path", SURFACES)
++    def test_url_update_queues_crawl_with_saved_revision(
++        self,
++        request,
++        client_fixture,
++        url_pattern,
++        task_path,
++        activity_path,
++        workspace,
++        project,
++        issue,
++        issue_link,
++    ):
++        url = _detail_url(url_pattern, workspace, project, issue, issue_link)
++        new_url = "https://example.com/changed"
++
++        with patch(task_path) as mock_crawl, patch(activity_path):
++            response = _client(request, client_fixture).patch(url, {"url": new_url}, format="json")
++
++        assert response.status_code == status.HTTP_200_OK
++        issue_link.refresh_from_db()
++        mock_crawl.delay.assert_called_once()
++        dispatched_id, dispatched_url, dispatched_revision = mock_crawl.delay.call_args.args
++        assert str(dispatched_id) == str(issue_link.id)
++        assert dispatched_url == new_url
++        assert dispatched_revision == issue_link.updated_at.isoformat()
++
++    @pytest.mark.django_db
++    @pytest.mark.parametrize("client_fixture,url_pattern,task_path,activity_path", SURFACES)
++    def test_url_and_metadata_update_preserves_explicit_metadata(
++        self,
++        request,
++        client_fixture,
++        url_pattern,
++        task_path,
++        activity_path,
++        workspace,
++        project,
++        issue,
++        issue_link,
++    ):
++        url = _detail_url(url_pattern, workspace, project, issue, issue_link)
++        metadata = {"title": "Explicit metadata for the new URL"}
++
++        with patch(task_path) as mock_crawl, patch(activity_path):
++            response = _client(request, client_fixture).patch(
++                url,
++                {
++                    "url": "https://example.com/changed-with-metadata",
++                    "metadata": metadata,
++                },
++                format="json",
++            )
++
++        assert response.status_code == status.HTTP_200_OK
++        issue_link.refresh_from_db()
++        assert issue_link.metadata == metadata
++        mock_crawl.delay.assert_not_called()
++
++    @pytest.mark.django_db
++    @pytest.mark.parametrize("client_fixture,url_pattern,task_path,activity_path", SURFACES)
++    def test_create_queues_crawl_with_saved_revision(
++        self,
++        request,
++        client_fixture,
++        url_pattern,
++        task_path,
++        activity_path,
++        workspace,
++        project,
++        issue,
++    ):
++        url = _list_url(url_pattern, workspace, project, issue)
++        link_url = "https://example.com/new"
++
++        with patch(task_path) as mock_crawl, patch(activity_path):
++            response = _client(request, client_fixture).post(
++                url,
++                {"title": "New link", "url": link_url},
++                format="json",
++            )
++
++        assert response.status_code == status.HTTP_201_CREATED
++        issue_link = IssueLink.objects.get(id=response.data["id"])
++        mock_crawl.delay.assert_called_once()
++        dispatched_id, dispatched_url, dispatched_revision = mock_crawl.delay.call_args.args
++        assert str(dispatched_id) == str(issue_link.id)
++        assert dispatched_url == link_url
++        assert dispatched_revision == issue_link.updated_at.isoformat()
 diff --git a/apps/api/plane/tests/unit/bg_tasks/test_work_item_link_task.py b/apps/api/plane/tests/unit/bg_tasks/test_work_item_link_task.py
-index 2599126ff49fed39837a55428845413d0c8a1ddb..738cd7adf60a0443ea605283c647f9fff81ce964 100644
+index 2599126ff49fed39837a55428845413d0c8a1ddb..078eb24922b4cf53782882a8e4c6305f18b1ef41 100644
 --- a/apps/api/plane/tests/unit/bg_tasks/test_work_item_link_task.py
 +++ b/apps/api/plane/tests/unit/bg_tasks/test_work_item_link_task.py
 @@ -7,7 +7,11 @@ import ipaddress
@@ -136,7 +369,7 @@ index 2599126ff49fed39837a55428845413d0c8a1ddb..738cd7adf60a0443ea605283c647f9ff
  from plane.utils.ip_address import validate_url
  
  
-@@ -63,6 +67,70 @@ class TestValidateUrlIp:
+@@ -63,6 +67,60 @@ class TestValidateUrlIp:
                  validate_url_ip("http://attacker.example.com")
  
  
@@ -147,9 +380,7 @@ index 2599126ff49fed39837a55428845413d0c8a1ddb..738cd7adf60a0443ea605283c647f9ff
 +    @patch("plane.bgtasks.work_item_link_task.timezone.now")
 +    @patch("plane.bgtasks.work_item_link_task.crawl_work_item_link_title_and_favicon")
 +    @patch("plane.bgtasks.work_item_link_task.IssueLink.objects.filter")
-+    def test_updates_metadata_at_the_expected_revision(
-+        self, mock_filter, mock_crawl, mock_now
-+    ):
++    def test_updates_metadata_at_the_expected_revision(self, mock_filter, mock_crawl, mock_now):
 +        metadata = {"title": "Plane", "url": "https://plane.so"}
 +        expected_updated_at = "2026-09-03T10:00:00+00:00"
 +        applied_at = MagicMock()
@@ -161,23 +392,15 @@ index 2599126ff49fed39837a55428845413d0c8a1ddb..738cd7adf60a0443ea605283c647f9ff
 +        mock_crawl.return_value = metadata
 +        mock_now.return_value = applied_at
 +
-+        crawl_work_item_link_title(
-+            "link-id", "https://plane.so", expected_updated_at
-+        )
++        crawl_work_item_link_title("link-id", "https://plane.so", expected_updated_at)
 +
 +        mock_filter.assert_called_once_with(id="link-id", url="https://plane.so")
-+        base_queryset.filter.assert_called_once_with(
-+            updated_at=expected_updated_at
-+        )
-+        guarded_queryset.update.assert_called_once_with(
-+            metadata=metadata, updated_at=applied_at
-+        )
++        base_queryset.filter.assert_called_once_with(updated_at=expected_updated_at)
++        guarded_queryset.update.assert_called_once_with(metadata=metadata, updated_at=applied_at)
 +
 +    @patch("plane.bgtasks.work_item_link_task.crawl_work_item_link_title_and_favicon")
 +    @patch("plane.bgtasks.work_item_link_task.IssueLink.objects.filter")
-+    def test_skips_metadata_when_the_link_changed_after_dispatch(
-+        self, mock_filter, mock_crawl
-+    ):
++    def test_skips_metadata_when_the_link_changed_after_dispatch(self, mock_filter, mock_crawl):
 +        base_queryset = MagicMock()
 +        guarded_queryset = MagicMock()
 +        mock_filter.return_value = base_queryset

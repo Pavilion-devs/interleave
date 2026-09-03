@@ -1231,7 +1231,8 @@ export default function PlaneLabPage() {
                   <div>
                     plane-9674-stale-metadata.patch
                     <small>
-                      Four-file local contribution; publication requires review.
+                      Five-file patch with 13 tests; publication requires
+                      review.
                     </small>
                   </div>
                 </div>

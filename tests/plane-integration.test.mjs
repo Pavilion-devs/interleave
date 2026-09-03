@@ -181,4 +181,20 @@ test('the upstream patch is pinned and contains both dispatch and write guards',
     /test_skips_metadata_when_the_link_changed_after_dispatch/,
   );
   assert.match(patch, /test_skips_legacy_task_without_a_revision/);
+  assert.match(patch, /test_title_only_update_does_not_queue_crawl/);
+  assert.match(patch, /test_metadata_update_does_not_queue_crawl/);
+  assert.match(patch, /test_url_update_queues_crawl_with_saved_revision/);
+  assert.match(
+    patch,
+    /test_url_and_metadata_update_preserves_explicit_metadata/,
+  );
+  assert.match(patch, /test_create_queues_crawl_with_saved_revision/);
+  assert.match(
+    patch,
+    /\/api\/workspaces\/\{slug\}\/projects\/\{project_id\}\/issues\/\{issue_id\}\/issue-links\//,
+  );
+  assert.match(
+    patch,
+    /\/api\/v1\/workspaces\/\{slug\}\/projects\/\{project_id\}\/work-items\/\{issue_id\}\/links\//,
+  );
 });
