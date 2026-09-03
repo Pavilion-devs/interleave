@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Geist_Mono, Manrope } from 'next/font/google';
 import './globals.css';
 
-const geistSans = Geist({
+const manrope = Manrope({
   variable: '--font-geist-sans',
   subsets: ['latin'],
 });
@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Interleave — WebMCP Lab',
+  title: 'Interleave — Concurrency assurance for agent-callable apps',
   description:
-    'Reproduce the moment a human edit and an agent write collide. Inspect, replay, and verify the fix in a live WebMCP laboratory.',
+    'Record human-agent races, replay the failure, minimize the sequence, and export a deterministic regression that proves the fix.',
 };
 
 export default function RootLayout({
@@ -26,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${manrope.variable} ${geistMono.variable} antialiased`}
       >
         {children}
       </body>

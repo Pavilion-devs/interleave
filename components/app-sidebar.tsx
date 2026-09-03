@@ -5,6 +5,7 @@ import {
   Braces,
   ExternalLink,
   FlaskConical,
+  GitBranch,
   Link2,
   ListChecks,
 } from 'lucide-react';
@@ -38,7 +39,7 @@ const routes: Array<{
   },
   {
     id: 'reservation',
-    href: '/',
+    href: '/reservation',
     label: 'Reservation race',
     tag: 'LAB',
     icon: FlaskConical,
@@ -64,42 +65,55 @@ export function AppSidebar({
 }: AppSidebarProps) {
   return (
     <aside className="sidebar" aria-label="Interleave workbench">
-      <div className="sidebar-heading">FLAGSHIP</div>
-      {routes.map((route, index) => {
-        const Icon = route.icon;
-        const item = (
-          <>
-            <Icon size={17} />
-            {route.label}
-            <span>{route.tag}</span>
-          </>
-        );
-        const separator = index === 1 && (
-          <div className="sidebar-heading labs-heading">ADAPTER LABS</div>
-        );
-        return (
-          <div className="sidebar-route" key={route.id}>
-            {separator}
-            {route.id === active ? (
-              <div className="nav-active" aria-current="page">
-                {item}
+      <div className="sidebar-main">
+        <Link className="sidebar-brand" href="/" prefetch={false}>
+          <span className="sidebar-brand-mark"><GitBranch size={17} /></span>
+          <span>Interleave</span>
+        </Link>
+
+        <nav className="sidebar-nav">
+          <div className="sidebar-heading">FLAGSHIP</div>
+          {routes.map((route, index) => {
+            const Icon = route.icon;
+            const item = (
+              <>
+                <span className="sidebar-route-icon"><Icon size={18} /></span>
+                <span className="sidebar-route-label">{route.label}</span>
+                <span className="sidebar-route-tag">{route.tag}</span>
+              </>
+            );
+            const separator = index === 1 && (
+              <div className="sidebar-heading labs-heading">ADAPTER LABS</div>
+            );
+            return (
+              <div className="sidebar-route" key={route.id}>
+                {separator}
+                {route.id === active ? (
+                  <div className="nav-active" aria-current="page">
+                    {item}
+                  </div>
+                ) : (
+                  <Link className="nav-link" href={route.href} prefetch={false}>
+                    {item}
+                  </Link>
+                )}
               </div>
-            ) : (
-              <Link className="nav-link" href={route.href} prefetch={false}>
-                {item}
-              </Link>
-            )}
+            );
+          })}
+        </nav>
+
+        <div className="sidebar-incident">
+          <div className="sidebar-heading">{scenarioHeading}</div>
+          <div className="scenario-nav">
+            <span className="scenario-dot" />
+            <div>
+              {scenarioTitle}
+              <small>{scenarioDetail}</small>
+            </div>
           </div>
-        );
-      })}
-      <div className="sidebar-heading scenario-heading">{scenarioHeading}</div>
-      <div className="scenario-nav">
-        <span className="scenario-dot" />
-        <div>
-          {scenarioTitle}
-          <small>{scenarioDetail}</small>
         </div>
       </div>
+
       <div className="sidebar-bottom">
         <div className="tiny-symbol">
           <Braces size={17} />

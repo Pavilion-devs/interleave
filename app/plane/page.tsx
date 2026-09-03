@@ -585,43 +585,6 @@ export default function PlaneLabPage() {
 
   return (
     <main className="lab-app plane-lab">
-      <header className="app-header">
-        <Link
-          className="brand"
-          href="/"
-          prefetch={false}
-          aria-label="Interleave home"
-        >
-          <span className="brand-mark">
-            <GitBranch size={21} />
-          </span>
-          interleave<span className="brand-suffix">/ lab</span>
-        </Link>
-        <div className="header-path">
-          <span>Integrations</span>
-          <ChevronRight size={14} />
-          <span>Plane #9674</span>
-        </div>
-        <span
-          className={'native-status ' + native.status}
-          title={native.error ?? 'Native document.modelContext tools'}
-        >
-          <span className="status-dot" />
-          {native.status === 'ready'
-            ? native.count + ' native tools'
-            : native.status === 'unsupported'
-              ? 'Manual mode'
-              : native.status === 'error'
-                ? 'Tool registration failed'
-                : native.status === 'updating'
-                  ? 'Updating tool surface'
-                  : 'Connecting tools'}
-        </span>
-        <span className="version-chip">
-          OSS INCIDENT <span>v0.4</span>
-        </span>
-      </header>
-
       <div className="workspace">
         <AppSidebar
           active="plane"
@@ -635,6 +598,42 @@ export default function PlaneLabPage() {
         />
 
         <section className="workbench">
+          <header className="app-header">
+            <div>
+              <Link
+                className="brand"
+                href="/"
+                prefetch={false}
+                aria-label="Interleave home"
+              >
+                Plane incident
+              </Link>
+              <div className="header-path">
+                <span>Live workbench</span>
+                <ChevronRight size={14} />
+                <span>Issue #9674</span>
+              </div>
+            </div>
+            <span
+              className={'native-status ' + native.status}
+              title={native.error ?? 'Native document.modelContext tools'}
+            >
+              <span className="status-dot" />
+              {native.status === 'ready'
+                ? native.count + ' native tools'
+                : native.status === 'unsupported'
+                  ? 'Manual mode'
+                  : native.status === 'error'
+                    ? 'Tool registration failed'
+                    : native.status === 'updating'
+                      ? 'Updating tool surface'
+                      : 'Connecting tools'}
+            </span>
+            <span className="version-chip">
+              OSS INCIDENT <span>v0.4</span>
+            </span>
+          </header>
+
           <div className="page-intro">
             <div>
               <div className="eyebrow">

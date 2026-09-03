@@ -599,40 +599,6 @@ export default function TodoMvcLab() {
 
   return (
     <main className="lab-app todo-lab">
-      <header className="app-header">
-        <Link
-          className="brand"
-          href="/"
-          prefetch={false}
-          aria-label="Interleave reservation lab"
-        >
-          <span className="brand-mark">
-            <GitBranch size={21} />
-          </span>
-          interleave<span className="brand-suffix">/ lab</span>
-        </Link>
-        <div className="header-path">
-          <span>Integrations</span>
-          <ChevronRight size={14} />
-          <span>TodoMVC</span>
-        </div>
-        <span
-          className={`native-status ${native.status}`}
-          title={native.error ?? 'Native document.modelContext tools'}
-        >
-          <span className="status-dot" />
-          {native.status === 'ready'
-            ? `${native.count} native tools`
-            : native.status === 'unsupported'
-              ? 'Manual mode'
-              : native.status === 'error'
-                ? 'Tool registration failed'
-                : 'Connecting tools'}
-        </span>
-        <span className="version-chip">
-          EXTERNAL APP <span>v0.4</span>
-        </span>
-      </header>
       <div className="workspace">
         <AppSidebar
           active="todomvc"
@@ -645,6 +611,33 @@ export default function TodoMvcLab() {
           footerLinkLabel="Upstream source"
         />
         <section className="workbench">
+          <header className="app-header">
+            <div>
+              <Link className="brand" href="/" prefetch={false} aria-label="Interleave home">
+                TodoMVC adapter
+              </Link>
+              <div className="header-path">
+                <span>Adapter lab</span>
+                <ChevronRight size={14} />
+                <span>Delayed clear</span>
+              </div>
+            </div>
+            <span
+              className={`native-status ${native.status}`}
+              title={native.error ?? 'Native document.modelContext tools'}
+            >
+              <span className="status-dot" />
+              {native.status === 'ready'
+                ? `${native.count} native tools`
+                : native.status === 'unsupported'
+                  ? 'Manual mode'
+                  : native.status === 'error'
+                    ? 'Tool registration failed'
+                    : 'Connecting tools'}
+            </span>
+            <span className="version-chip">EXTERNAL APP <span>v0.4</span></span>
+          </header>
+
           <div className="page-intro">
             <div>
               <div className="eyebrow">

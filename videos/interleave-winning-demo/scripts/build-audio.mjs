@@ -40,7 +40,7 @@ const wordTimes = (text, spokenDuration) => {
   const tokens = text.match(/\S+/g) ?? [];
   const weights = tokens.map((token) => {
     const letters = token.replace(/[^\p{L}\p{N}]/gu, "").length;
-    const pause = /[.!?]$/.test(token) ? 3.3 : /[,;:]$/.test(token) ? 1.7 : /—$/.test(token) ? 1.4 : 0;
+    const pause = /[.!?]$/.test(token) ? 3.3 : /[,;:]$/.test(token) ? 1.7 : token.endsWith('—') ? 1.4 : 0;
     return Math.max(1.3, letters * 0.62) + pause;
   });
   const totalWeight = weights.reduce((sum, value) => sum + value, 0) || 1;
