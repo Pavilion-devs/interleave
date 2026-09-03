@@ -602,6 +602,7 @@ export default function TodoMvcLab() {
         <Link
           className="brand"
           href="/"
+          prefetch={false}
           aria-label="Interleave reservation lab"
         >
           <span className="brand-mark">
@@ -634,7 +635,7 @@ export default function TodoMvcLab() {
       <div className="workspace">
         <aside className="sidebar">
           <div className="sidebar-heading">WORKBENCH</div>
-          <Link className="nav-link" href="/">
+          <Link className="nav-link" href="/" prefetch={false}>
             <FlaskConical size={17} />
             Reservation fixture<span>01</span>
           </Link>
@@ -1167,7 +1168,7 @@ export default function TodoMvcLab() {
           />
 
           <footer className="integration-footer">
-            <Link href="/">
+            <Link href="/" prefetch={false}>
               <ArrowLeft size={14} /> Reservation fixture
             </Link>
             <span>

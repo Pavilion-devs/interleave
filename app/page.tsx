@@ -628,7 +628,12 @@ export default function Home() {
   return (
     <main className="lab-app">
       <header className="app-header">
-        <Link className="brand" href="/" aria-label="Interleave home">
+        <Link
+          className="brand"
+          href="/"
+          prefetch={false}
+          aria-label="Interleave home"
+        >
           <span className="brand-mark">
             <GitBranch size={21} />
           </span>
@@ -668,7 +673,7 @@ export default function Home() {
             <FlaskConical size={17} />
             Reservation fixture<span>01</span>
           </div>
-          <Link className="nav-link" href="/todomvc">
+          <Link className="nav-link" href="/todomvc" prefetch={false}>
             <Layers size={17} />
             TodoMVC integration<span>02</span>
           </Link>
