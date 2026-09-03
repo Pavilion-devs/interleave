@@ -17,7 +17,7 @@ The flagship proof uses Plane issue `makeplane/plane#9674`: an agent queues a me
 - [x] Reusable recorder package plus Reservation and TodoMVC adapters
 - [x] State-aware Plane WebMCP surface with compact evidence receipts
 - [x] Shared product navigation and a visible five-step proof path
-- [ ] Browser-level acceptance recording in a WebMCP-capable judge flow
+- [x] Browser-level acceptance recording in a WebMCP-capable judge flow
 - [ ] Public demo video under three minutes with narration
 - [ ] Final Devpost submission package
 

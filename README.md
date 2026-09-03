@@ -6,6 +6,7 @@ Interleave records real pending tool calls alongside human state changes, catche
 
 - Live flagship: [`/plane`](https://interleave-webmcp-lab.asaborodaniel.chatgpt.site/plane)
 - Public repository: [`Pavilion-devs/interleave`](https://github.com/Pavilion-devs/interleave)
+- Native browser acceptance: [`public/webmcp-plane-acceptance.json`](public/webmcp-plane-acceptance.json)
 - Build plan and demo spine: [`plan.md`](plan.md)
 
 ## Run
@@ -67,6 +68,8 @@ The second command is an intentionally failing verification. The older fixture c
 Every lab uses native `document.modelContext.registerTool`. Unsupported browsers retain manual controls. Registration uses AbortSignal cleanup; no fake polyfill is installed.
 
 The Plane route exposes nine focused tools while idle and five checkpoint controls while a crawler is pending. Interleave defers a tool-surface change until the current native call settles, preventing registration cleanup from aborting the operation being recorded. Tools include human-readable titles, parameter descriptions, read-only and untrusted-content annotations, and compact evidence receipts. Large regressions, patches, and session files stay behind explicit downloads instead of being copied into model context.
+
+The public route has completed a browser-level acceptance run through native WebMCP: the agent dispatched the pending crawl, a real click saved newer metadata during the call, and the delayed native completion overwrote it. Compare, reduction, regression export, and patch export then completed through the same tool surface. The exact ordering, timings, verdicts, and export checksums are preserved in [`public/webmcp-plane-acceptance.json`](public/webmcp-plane-acceptance.json) and explained in [`docs/WEBMCP-ACCEPTANCE.md`](docs/WEBMCP-ACCEPTANCE.md).
 
 The reservation fixture retains 17 tools for its broader recorder-development surface:
 

@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "kind": "interleave-webmcp-browser-acceptance",
+  "recordedDate": "2026-09-03",
+  "environment": {
+    "harness": "Codex in-app browser",
+    "route": "https://interleave-webmcp-lab.asaborodaniel.chatgpt.site/plane",
+    "api": "document.modelContext",
+    "browserConsoleErrors": 0,
+    "browserConsoleWarnings": 0
+  },
+  "target": {
+    "application": "Plane",
+    "issue": "makeplane/plane#9674",
+    "commit": "da1a7ab85012d16836459a10dd92ec55eb739c69",
+    "liveSystemsContacted": false
+  },
+  "nativeWebMcp": {
+    "idleToolCount": 9,
+    "raceTool": {
+      "name": "plane_patch_link_slow",
+      "source": "native",
+      "status": "fulfilled",
+      "durationMs": 8007
+    },
+    "verifiedTools": [
+      "plane_read_context",
+      "plane_compare_modes",
+      "plane_reduce_failure",
+      "plane_export_regression",
+      "plane_export_upstream_patch"
+    ]
+  },
+  "incident": {
+    "rule": "Metadata explicitly saved after a crawl is queued must not be overwritten by that stale crawl.",
+    "events": [
+      {
+        "sequence": 1,
+        "kind": "dispatch",
+        "actor": "agent",
+        "source": "native",
+        "title": "Plane PATCH queues a crawler",
+        "elapsedMs": 25424,
+        "afterDispatchMs": 0
+      },
+      {
+        "sequence": 2,
+        "kind": "edit",
+        "actor": "human",
+        "source": "manual",
+        "title": "Human saves explicit metadata",
+        "elapsedMs": 28413,
+        "afterDispatchMs": 2989
+      },
+      {
+        "sequence": 3,
+        "kind": "violation",
+        "actor": "worker",
+        "source": "native",
+        "title": "Explicit metadata overwritten",
+        "elapsedMs": 33426,
+        "afterDispatchMs": 8002
+      }
+    ],
+    "recording": {
+      "entries": 5,
+      "callsAndActions": 2,
+      "stateChanges": 3,
+      "errorsOrCancellations": 0
+    },
+    "verdict": {
+      "passed": false,
+      "completion": "applied",
+      "expected": "Human verified runbook",
+      "actual": "Plane documentation"
+    }
+  },
+  "replay": {
+    "currentPlane": {
+      "passed": false,
+      "completion": "applied",
+      "actual": "Plane documentation"
+    },
+    "proposedPatch": {
+      "passed": true,
+      "completion": "blocked",
+      "actual": "Human verified runbook"
+    }
+  },
+  "reduction": {
+    "attempts": 4,
+    "originalLength": 3,
+    "reducedLength": 3,
+    "recipe": [
+      {
+        "type": "start_crawl",
+        "title": "Production runbook"
+      },
+      {
+        "type": "edit_metadata",
+        "title": "Human verified runbook"
+      },
+      {
+        "type": "release"
+      }
+    ]
+  },
+  "exports": {
+    "regression": {
+      "filename": "interleave-plane-regression.test.mjs",
+      "generatedCharacters": 1243,
+      "recipeSteps": 3
+    },
+    "upstreamPatch": {
+      "filename": "plane-9674-stale-metadata.patch",
+      "appliesTo": "da1a7ab85012d16836459a10dd92ec55eb739c69",
+      "sha256": "a48b20978ca27a0e3aec62fde4080d40b93fc5cd8bec6144712e04763daa2aab",
+      "sizeBytes": 17016,
+      "validation": "37/37 focused and neighboring Plane tests passed",
+      "publicationStatus": "local review artifact; not published"
+    }
+  }
+}

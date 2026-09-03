@@ -329,14 +329,21 @@ p {
   background: #1b2920;
   overflow-x: auto;
 }
-.proof-metrics span {
+.proof-metrics span,
+.proof-metrics a {
   color: #91aa98;
   font-size: 11px;
   padding: 8px 15px;
   border-right: 1px solid #33483a;
   white-space: nowrap;
 }
-.proof-metrics span:last-child {
+.proof-metrics a {
+  text-decoration: none;
+}
+.proof-metrics a:hover {
+  color: #c4efca;
+}
+.proof-metrics > :last-child {
   border-right: 0;
 }
 .proof-metrics b {

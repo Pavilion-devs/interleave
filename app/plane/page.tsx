@@ -705,6 +705,13 @@ export default function PlaneLabPage() {
           </section>
 
           <div className="proof-metrics" aria-label="Validation evidence">
+            <a
+              href="/webmcp-plane-acceptance.json"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <b>LIVE</b> browser-verified
+            </a>
             <span>
               <b>37 / 37</b> Plane tests
             </span>
