@@ -1,6 +1,6 @@
-# Interleave — WebMCP Lab
+# Interleave — WebMCP Lab v0.3
 
-A collaboration testing lab with a real asynchronous reservation operation, opt-in tool recording, saved sessions, and a deliberately seeded stale-write defect.
+A collaboration testing lab with real asynchronous operations, opt-in tool recording, saved sessions, and deliberately seeded stale-write defects. It includes the original reservation fixture and an independently maintained TodoMVC application integration.
 
 ## Run
 
@@ -16,6 +16,14 @@ Open the Local URL printed by the server. Click **Start reservation**, change th
 **Hold completion** keeps the same asynchronous call pending. **Complete now** finishes it early. **Cancel operation** rejects it without committing. The optional step-by-step capture controls preserve the earlier staged demonstration. **Run sample** is explicitly scripted.
 
 The delay models application work in this browser; it is not a merchant or network request. No payment or real ticket booking occurs.
+
+## TodoMVC external application integration
+
+Open `/todomvc` to run the recorder against the React reducer from the independently maintained [TodoMVC repository](https://github.com/tastejs/todomvc/tree/ff43b02e59dfa604386bb382034b2cd07c2bcd8a/examples/react). Todo additions, toggles, and clear-completed behavior pass through the adapted upstream reducer pinned at commit `ff43b02e59dfa604386bb382034b2cd07c2bcd8a`. Its source and MIT license are documented in `THIRD_PARTY_NOTICES.md`.
+
+The demonstrated race is explicitly seeded by Interleave's orchestration layer; it is not presented as a TodoMVC bug. A delayed agent clear captures the current list, a human adds a todo while that call is pending, and the seeded completion replaces live state with reducer output computed from the old list. The revision guard refuses that stale replacement. A fresh retry reads the current list and safely finishes the clear.
+
+The TodoMVC route has its own versioned recording adapter, browser-local archive, JSON validation/import/export, asynchronous replay, delta reduction, runnable regression export, and 15 native WebMCP tools. This proves the recorder package is not coupled to the reservation data model.
 
 ## Recorder and saved sessions
 
@@ -42,7 +50,7 @@ The second command is an intentionally failing verification. The older fixture c
 
 The top-level document registers 17 tools through `document.modelContext.registerTool`. Unsupported browsers retain manual controls. Registration uses AbortSignal cleanup; no fake polyfill is installed.
 
-- `reservation_reserve({delayMs})` stays pending until completion or cancellation. Valid delay: 500–30000 ms. The human can edit the visible selection during the call.
+- `reservation_reserve({delayMs})` stays pending until completion or cancellation. Native delay: 500–20000 ms. The manual interface can demonstrate a 30-second wait. The human can edit the visible selection during the call.
 - `lab_hold_response({})`, `reservation_release({})`, and `reservation_cancel({})` control the pending operation.
 - `reservation_capture({})` retains the separate capture/release fixture controls.
 - `lab_inject_human_edit({quantity})` injects a clearly labeled human action for automated experiments.
@@ -51,7 +59,9 @@ The top-level document registers 17 tools through `document.modelContext.registe
 - `lab_compare_modes({})`, `lab_reduce_failure({})`, and `lab_export_regression({})` analyze the completed recipe.
 - `lab_list_sessions({})`, `lab_open_session({sessionId})`, `lab_export_session({sessionId?})`, and `lab_import_session({json})` operate on the local session archive.
 
-A real agent prompt: “Reserve my current ticket selection with a 30-second delay. I will change the quantity while your call is running. Tell me whether my latest selection was preserved when the operation finishes.”
+A real agent prompt: “Reserve my current ticket selection with a 15-second delay. I will change the quantity while your call is running. Tell me whether my latest selection was preserved when the operation finishes.”
+
+On `/todomvc`: “Start clearing completed todos with a 15-second delay. I will add a todo while your call is running. When it finishes, tell me whether my new todo survived, reduce any failure, and export the regression test.”
 
 The browser must support concurrent human interaction while the tool awaits completion. Cancellation from the caller is honored when the browser supplies an execution AbortSignal; explicit lab cancellation also works.
 
@@ -64,7 +74,7 @@ npm run build:recorder
 npm pack ./packages/recorder --pack-destination /tmp
 ```
 
-This is a local distribution; the package has not been published to npm. The running lab provides a direct download of the built package. The repository and recorder are licensed under MIT. A separate document-state test verifies the generic recorder API. An independently developed external application integration remains outstanding.
+This is a local distribution; the package has not been published to npm. The running lab provides a direct download of the built package. The repository and recorder are licensed under MIT. A separate document-state test verifies the generic recorder API, and the TodoMVC route exercises the package in a second application model.
 
 ## Checks
 
@@ -74,6 +84,6 @@ npm run lint
 npm run build
 ```
 
-Tests cover autonomous delayed completion, guarded recovery, cancellation, invalid inputs, duplicate calls, reset/replay races, JSON validation, asynchronous replay, generic recording, error preservation, redaction, immutable snapshots, and bounded history. Seeded defects are not claimed as newly discovered bugs.
+Tests cover autonomous delayed completion, guarded recovery, cancellation, invalid inputs, duplicate calls, reset/replay races, JSON validation, asynchronous replay, generic recording, error preservation, redaction, immutable snapshots, bounded history, upstream TodoMVC reducer behavior, TodoMVC interruption/recovery, reduction, and a regression that passes guarded and fails seeded. Seeded defects are not claimed as newly discovered bugs.
 
 The rules are application expectations, not universal WebMCP requirements. See the [current specification](https://webmachinelearning.github.io/webmcp/).

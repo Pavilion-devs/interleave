@@ -174,7 +174,8 @@ export default function Home() {
         if (s.assertion) {
           savedRecipe.current = structuredClone(s.recipe);
           setHasRecording(true);
-          if(!s.assertion.passed||s.assertion.completion==='blocked')failureRecipe.current=structuredClone(s.recipe);
+          if (!s.assertion.passed || s.assertion.completion === 'blocked')
+            failureRecipe.current = structuredClone(s.recipe);
         }
       }),
     [lab],
@@ -183,7 +184,10 @@ export default function Home() {
     structuredClone(
       savedRecipe.current.length ? savedRecipe.current : SAMPLE_RECIPE,
     );
-  const chooseFailureRecipe=()=>structuredClone(failureRecipe.current.length?failureRecipe.current:SAMPLE_RECIPE);
+  const chooseFailureRecipe = () =>
+    structuredClone(
+      failureRecipe.current.length ? failureRecipe.current : SAMPLE_RECIPE,
+    );
   const checkBusy = () => {
     if (busyRef.current)
       throw new Error('A replay is in progress. Wait for it to finish.');
@@ -418,7 +422,12 @@ export default function Home() {
         objectInput(input, []);
         return {
           current: sessionSummary(adapter.recorder.getSnapshot()),
-          saved: archive.getSnapshot().sessions.filter(session=>session.id!==adapter.recorder.getSnapshot().id).map(sessionSummary),
+          saved: archive
+            .getSnapshot()
+            .sessions.filter(
+              (session) => session.id !== adapter.recorder.getSnapshot().id,
+            )
+            .map(sessionSummary),
           storageWarning: archive.getSnapshot().warning,
         };
       },
@@ -427,7 +436,9 @@ export default function Home() {
         if (typeof args.sessionId !== 'string')
           throw new Error('A sessionId is required.');
         const session = findSession(args.sessionId);
-        setSelectedSession(session.id===adapter.recorder.getSnapshot().id?null:session);
+        setSelectedSession(
+          session.id === adapter.recorder.getSnapshot().id ? null : session,
+        );
         return sessionSummary(session);
       },
       lab_export_session(input) {
@@ -480,8 +491,8 @@ export default function Home() {
       ],
       [
         'reservation_reserve',
-        'Reserve the current sample ticket selection after a controlled delay. This single call remains pending while the human can edit the visible ticket count. Returns only after committing or rejecting a stale write. The delay models application work; no network booking or payment happens. Use lab_hold_response to hold completion, reservation_release to finish early, or reservation_cancel to cancel.',
-        schema({ delayMs: { type: 'integer', minimum: 500, maximum: 30000 } }, [
+        'Reserve the current sample ticket selection after a controlled delay. This single call remains pending while the human can edit the visible ticket count. Returns only after committing or rejecting a stale write. Native delay is limited to 20 seconds to stay inside browser tool-call transport limits. The delay models application work; no network booking or payment happens.',
+        schema({ delayMs: { type: 'integer', minimum: 500, maximum: 20000 } }, [
           'delayMs',
         ]),
         false,
@@ -647,7 +658,7 @@ export default function Home() {
                 : 'Connecting tools'}
         </span>
         <span className="version-chip">
-          EXPERIMENTAL <span>v0.2</span>
+          EXPERIMENTAL <span>v0.3</span>
         </span>
       </header>
       <div className="workspace">
@@ -655,8 +666,12 @@ export default function Home() {
           <div className="sidebar-heading">WORKBENCH</div>
           <div className="nav-active">
             <FlaskConical size={17} />
-            Experiments<span>01</span>
+            Reservation fixture<span>01</span>
           </div>
+          <Link className="nav-link" href="/todomvc">
+            <Layers size={17} />
+            TodoMVC integration<span>02</span>
+          </Link>
           <div className="sidebar-heading scenario-heading">
             CURRENT SCENARIO
           </div>

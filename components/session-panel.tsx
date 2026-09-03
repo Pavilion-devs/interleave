@@ -3,10 +3,8 @@ import { useRef, useState } from 'react';
 import { Download, FolderOpen, Play, Upload, X, Braces } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Session } from '@/packages/recorder/src/index';
-import type { RecordedState } from '@/lib/reservation-adapter';
 
-type Recording = Session<RecordedState>;
-export function SessionPanel({
+export function SessionPanel<S>({
   live,
   sessions,
   selected,
@@ -16,16 +14,24 @@ export function SessionPanel({
   onExport,
   warning,
   busy,
+  sessionLabel,
+  emptyTitle = 'Start an operation to record it.',
+  emptyBody = 'Completed and pending calls appear here alongside changes to application state.',
+  footnote = 'Up to 10 recent sessions within the browser storage limit. Lab navigation and session-management tools are excluded from application recordings. Imported sessions are inspected as data; replay executes only this adapter’s supported actions.',
 }: {
-  live: Recording;
-  sessions: Recording[];
-  selected: Recording | null;
-  onSelect: (session: Recording | null) => void;
-  onReplay: (session: Recording) => void;
+  live: Session<S>;
+  sessions: Session<S>[];
+  selected: Session<S> | null;
+  onSelect: (session: Session<S> | null) => void;
+  onReplay: (session: Session<S>) => void;
   onImport: (text: string) => void;
-  onExport: (session: Recording) => void;
+  onExport: (session: Session<S>) => void;
   warning: string;
   busy: boolean;
+  sessionLabel?: (session: Session<S>) => string;
+  emptyTitle?: string;
+  emptyBody?: string;
+  footnote?: string;
 }) {
   const [entryId, setEntryId] = useState<number | null>(null);
   const [importError, setImportError] = useState('');
@@ -34,7 +40,7 @@ export function SessionPanel({
   const entry =
     active.entries.find((item) => item.id === entryId) ?? active.entries.at(-1);
   const calls = active.entries.filter((item) => item.kind !== 'state');
-  const select = (session: Recording | null) => {
+  const select = (session: Session<S> | null) => {
     onSelect(session);
     setEntryId(null);
   };
@@ -84,7 +90,7 @@ export function SessionPanel({
               .map((item) => (
                 <option key={item.id} value={item.id}>
                   {new Date(item.startedAt).toLocaleString()} ·{' '}
-                  {item.initialState.mode} · {item.entries.length} events
+                  {sessionLabel?.(item) ?? `${item.entries.length} events`}
                 </option>
               ))}
           </select>
@@ -182,11 +188,8 @@ export function SessionPanel({
           {!active.entries.length ? (
             <div className="empty-trace">
               <FolderOpen />
-              <strong>Start a reservation to record it.</strong>
-              <p>
-                Completed and pending calls appear here alongside changes to
-                application state.
-              </p>
+              <strong>{emptyTitle}</strong>
+              <p>{emptyBody}</p>
             </div>
           ) : (
             active.entries.map((item) => (
@@ -259,12 +262,7 @@ export function SessionPanel({
           )}
         </div>
       </div>
-      <p className="session-footnote">
-        Up to 10 recent sessions within the browser storage limit. Lab
-        navigation and session-management tools are excluded from application
-        recordings. Imported sessions are inspected as data; replay executes
-        only this adapter’s supported actions.
-      </p>
+      <p className="session-footnote">{footnote}</p>
       <a
         className="recorder-download"
         href="/interleave-recorder-0.2.0.tgz"

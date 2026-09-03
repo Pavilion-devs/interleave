@@ -54,6 +54,9 @@ export default defineConfig(async () => {
       sites(),
       cloudflare({
         viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
+        // The worker inspector is unnecessary for this client-side lab and
+        // cannot bind its wildcard debug socket in restricted previews.
+        inspectorPort: false,
         config: localBindingConfig,
       }),
     ],

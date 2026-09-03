@@ -58,4 +58,4 @@ const unsubscribe = recorder.subscribe(() => {
 - Default history is 500 entries. Truncation is counted; applications must not claim complete replay of a truncated recording. Pending entries are retained, so a very large number of simultaneous calls can exceed that entry count.
 - Values must be JSON serializable. Unsupported values receive a serialization-error marker. Recorder callbacks and adapters should be synchronous and reliable; the package does not isolate exceptions thrown by an application's redactor, state reader, or subscriber.
 
-Persistence, semantic action replay, correctness rules, and browser UI belong to the integrating application. See `lib/reservation-adapter.ts` for a working integration and `tests/recorder.test.mjs` for a separate document-state example. The generic tests do not constitute an external application integration.
+Persistence, semantic action replay, correctness rules, and browser UI belong to the integrating application. See `lib/reservation-adapter.ts` for the reservation integration, `lib/todomvc/adapter.ts` for the independent TodoMVC application model, and `tests/recorder.test.mjs` for a minimal document-state example.
