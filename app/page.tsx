@@ -36,17 +36,29 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  ReservationLab,
   SAMPLE_RECIPE,
   assertMode,
   assertQuantity,
   replayRecipe,
   reduceFailure,
-  exportRegression,
   type Command,
   type Mode,
 } from '@/lib/lab-engine';
 import { objectInput, registerSiteTools, type SiteTool } from '@/lib/webmcp';
+import {
+  ReservationAdapter,
+  replayAsyncRecipe,
+  recipeFromSession,
+  type RecordedState,
+} from '@/lib/reservation-adapter';
+import {
+  SessionArchive,
+  parseSession,
+  closeInterruptedSession,
+} from '@/lib/session-archive';
+import { exportAsyncRegression } from '@/lib/async-regression';
+import { SessionPanel } from '@/components/session-panel';
+import type { Session } from '@/packages/recorder/src/index';
 
 type Comparison = {
   baseline: ReturnType<typeof replayRecipe>;
@@ -62,8 +74,49 @@ function download(name: string, content: string, type: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
+function CompletionClock({
+  dueAt,
+  delayMs,
+}: {
+  dueAt: number | null;
+  delayMs: number;
+}) {
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <span>
+      {dueAt === null
+        ? 'Completion held'
+        : `Finishes in ${Math.max(0, Math.ceil((dueAt - (now || dueAt - delayMs)) / 1000))}s`}
+    </span>
+  );
+}
+
 export default function Home() {
-  const [lab] = useState(() => new ReservationLab());
+  const [adapter] = useState(() => new ReservationAdapter());
+  const lab = adapter.lab;
+  const operation = useSyncExternalStore(
+    adapter.operation.subscribe,
+    adapter.operation.getSnapshot,
+    () => null,
+  );
+  const recording = useSyncExternalStore(
+    adapter.recorder.subscribe,
+    adapter.recorder.getSnapshot,
+    adapter.recorder.getSnapshot,
+  );
+  const [archive] = useState(() => new SessionArchive());
+  const archiveState = useSyncExternalStore(
+    archive.subscribe,
+    archive.getSnapshot,
+    archive.getServerSnapshot,
+  );
+  const [selectedSession, setSelectedSession] =
+    useState<Session<RecordedState> | null>(null);
+  const [delayMs, setDelayMs] = useState(15000);
   const state = useSyncExternalStore(
     lab.subscribe,
     lab.getSnapshot,
@@ -84,10 +137,33 @@ export default function Home() {
   const [notice, setNotice] = useState('');
   const [hasRecording, setHasRecording] = useState(false);
   const savedRecipe = useRef<Command[]>([]);
+  const failureRecipe = useRef<Command[]>([]);
   const generation = useRef(0);
   const selectedRef = useRef<number | null>(null);
   const busyRef = useRef(false);
-  const actionsRef = useRef<Record<string, (input: unknown) => unknown>>({});
+  const actionsRef = useRef<
+    Record<
+      string,
+      (input: unknown, options?: { signal?: AbortSignal }) => unknown
+    >
+  >({});
+  useEffect(() => {
+    archive.initialize();
+    const save = () => archive.save(adapter.recorder.getSnapshot());
+    const detach = adapter.recorder.subscribe(save);
+    const leave = () => {
+      if (adapter.operation.getSnapshot())
+        adapter.operation.cancel('The document was closed.');
+      adapter.recorder.interruptPending('The document was closed.');
+      save();
+    };
+    window.addEventListener('beforeunload', leave);
+    return () => {
+      leave();
+      detach();
+      window.removeEventListener('beforeunload', leave);
+    };
+  }, [adapter, archive]);
   useLayoutEffect(() => {
     selectedRef.current = selected;
   }, [selected]);
@@ -98,6 +174,7 @@ export default function Home() {
         if (s.assertion) {
           savedRecipe.current = structuredClone(s.recipe);
           setHasRecording(true);
+          if(!s.assertion.passed||s.assertion.completion==='blocked')failureRecipe.current=structuredClone(s.recipe);
         }
       }),
     [lab],
@@ -106,6 +183,7 @@ export default function Home() {
     structuredClone(
       savedRecipe.current.length ? savedRecipe.current : SAMPLE_RECIPE,
     );
+  const chooseFailureRecipe=()=>structuredClone(failureRecipe.current.length?failureRecipe.current:SAMPLE_RECIPE);
   const checkBusy = () => {
     if (busyRef.current)
       throw new Error('A replay is in progress. Wait for it to finish.');
@@ -114,7 +192,8 @@ export default function Home() {
     generation.current++;
     busyRef.current = false;
     setPlaying(false);
-    lab.reset(mode);
+    adapter.reset(mode);
+    setSelectedSession(null);
     setSelected(null);
     selectedRef.current = null;
     setError('');
@@ -122,22 +201,29 @@ export default function Home() {
     setComparison(null);
     setReduction(null);
   };
-  const playSequence = async (recipe: Command[], mode: Mode) => {
+  const playSequence = async (
+    recipe: Command[],
+    mode: Mode,
+    animate = true,
+  ) => {
     checkBusy();
     reset(mode);
     const token = generation.current;
     busyRef.current = true;
     setPlaying(true);
     try {
-      for (const command of recipe) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, command.type === 'observe' ? 230 : 650),
-        );
-        if (token !== generation.current) return;
-        lab.execute(command, 'replay');
-      }
+      await replayAsyncRecipe(recipe, adapter, async () => {
+        if (animate) await new Promise((resolve) => setTimeout(resolve, 350));
+        if (token !== generation.current)
+          throw new DOMException('Replay stopped.', 'AbortError');
+      });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Replay failed.');
+      if (
+        token === generation.current &&
+        !(e instanceof Error && e.name === 'AbortError')
+      )
+        setError(e instanceof Error ? e.message : 'Replay failed.');
+      throw e;
     } finally {
       if (token === generation.current) {
         busyRef.current = false;
@@ -146,7 +232,11 @@ export default function Home() {
     }
   };
   const compare = () => {
-    const recipe = chooseRecipe();
+    if (adapter.operation.getSnapshot())
+      throw new Error(
+        'Finish or cancel the pending operation before comparing recordings.',
+      );
+    const recipe = chooseFailureRecipe();
     const result = {
       baseline: replayRecipe(recipe, 'unguarded'),
       guarded: replayRecipe(recipe, 'guarded'),
@@ -156,7 +246,11 @@ export default function Home() {
     return result;
   };
   const minimize = () => {
-    const result = reduceFailure(chooseRecipe());
+    if (adapter.operation.getSnapshot())
+      throw new Error(
+        'Finish or cancel the pending operation before reducing it.',
+      );
+    const result = reduceFailure(chooseFailureRecipe());
     setReduction(result);
     return result;
   };
@@ -167,10 +261,44 @@ export default function Home() {
       reservation: current.reservation,
       assertion: current.assertion,
       eventCount: current.events.length,
+      operation: adapter.operation.getSnapshot(),
+      recording: {
+        id: adapter.recorder.getSnapshot().id,
+        eventCount: adapter.recorder.getSnapshot().entries.length,
+      },
       source: 'disposable_browser_fixture',
     };
   };
-  const recipeName = 'interleave-regression.test.mjs';
+  const recipeName = 'interleave-async-regression.test.mjs';
+  const findSession = (id: unknown) => {
+    const current = adapter.recorder.getSnapshot();
+    const match =
+      id === undefined || id === current.id
+        ? current
+        : archive.getSnapshot().sessions.find((item) => item.id === id);
+    if (!match)
+      throw new Error('Saved session does not exist in this browser.');
+    return match;
+  };
+  const importSession = (text: string) => {
+    const imported = closeInterruptedSession(parseSession(text));
+    if (imported.id === adapter.recorder.getSnapshot().id)
+      throw new Error(
+        'This file is the current session. Start a new run before importing it.',
+      );
+    archive.save(imported);
+    setSelectedSession(imported);
+    return imported;
+  };
+  const sessionSummary = (session: Session<RecordedState>) => ({
+    id: session.id,
+    startedAt: session.startedAt,
+    mode: session.initialState.mode,
+    eventCount: session.entries.length,
+    pending: session.entries.some(
+      (entry) => entry.status === 'pending' || entry.status === 'interrupted',
+    ),
+  });
   useLayoutEffect(() => {
     actionsRef.current = {
       lab_read_context(input) {
@@ -208,7 +336,28 @@ export default function Home() {
       reservation_release(input) {
         objectInput(input, []);
         checkBusy();
-        lab.release('native');
+        if (adapter.operation.getSnapshot()) adapter.operation.completeNow();
+        else lab.release('native');
+        return compactState();
+      },
+      reservation_reserve(input, options) {
+        const args = objectInput(input, ['delayMs']);
+        checkBusy();
+        return adapter.operation
+          .reserve(args.delayMs as number, 'native', options?.signal)
+          .then(() => compactState());
+      },
+      reservation_cancel(input) {
+        objectInput(input, []);
+        checkBusy();
+        if (adapter.operation.getSnapshot()) adapter.operation.cancel();
+        else lab.cancel('native');
+        return compactState();
+      },
+      lab_hold_response(input) {
+        objectInput(input, []);
+        checkBusy();
+        adapter.operation.hold();
         return compactState();
       },
       lab_select_event(input) {
@@ -221,13 +370,19 @@ export default function Home() {
         selectedRef.current = target.id;
         return target;
       },
-      lab_replay(input) {
-        const args = objectInput(input, ['mode']);
+      async lab_replay(input) {
+        const args = objectInput(input, ['mode', 'sessionId']);
         assertMode(args.mode);
         checkBusy();
-        const recipe = chooseRecipe();
-        reset(args.mode);
-        for (const command of recipe) lab.execute(command, 'replay');
+        if (adapter.operation.getSnapshot())
+          throw new Error(
+            'Finish or cancel the pending operation before replaying.',
+          );
+        const recipe =
+          args.sessionId === undefined
+            ? chooseRecipe()
+            : recipeFromSession(findSession(args.sessionId));
+        await playSequence(recipe, args.mode, false);
         return { ...compactState(), replayedSteps: recipe.length };
       },
       lab_compare_modes(input) {
@@ -248,12 +403,51 @@ export default function Home() {
       lab_export_regression(input) {
         objectInput(input, []);
         checkBusy();
+        if (adapter.operation.getSnapshot())
+          throw new Error(
+            'Finish or cancel the pending operation before exporting a test.',
+          );
         return {
           filename: recipeName,
-          content: exportRegression(chooseRecipe()),
+          content: exportAsyncRegression(chooseFailureRecipe()),
           instructions:
-            "Save this file under the project's tests/ directory and run node --test tests/interleave-regression.test.mjs. Requires Node 22.13+ and the project's lab-engine.ts.",
+            'Save under tests/ and run node --test tests/interleave-async-regression.test.mjs. It checks intent preservation and completed recovery through the asynchronous adapter. Set INTERLEAVE_IMPLEMENTATION=unguarded to witness a failing test. Requires this project and Node 22.13+.',
         };
+      },
+      lab_list_sessions(input) {
+        objectInput(input, []);
+        return {
+          current: sessionSummary(adapter.recorder.getSnapshot()),
+          saved: archive.getSnapshot().sessions.filter(session=>session.id!==adapter.recorder.getSnapshot().id).map(sessionSummary),
+          storageWarning: archive.getSnapshot().warning,
+        };
+      },
+      lab_open_session(input) {
+        const args = objectInput(input, ['sessionId']);
+        if (typeof args.sessionId !== 'string')
+          throw new Error('A sessionId is required.');
+        const session = findSession(args.sessionId);
+        setSelectedSession(session.id===adapter.recorder.getSnapshot().id?null:session);
+        return sessionSummary(session);
+      },
+      lab_export_session(input) {
+        const args = objectInput(input, ['sessionId']);
+        const session = findSession(args.sessionId);
+        return {
+          filename: `interleave-session-${session.id}.json`,
+          json: JSON.stringify(session, null, 2),
+        };
+      },
+      lab_import_session(input) {
+        const args = objectInput(input, ['json']);
+        checkBusy();
+        if (adapter.operation.getSnapshot())
+          throw new Error(
+            'Finish or cancel the pending operation before importing.',
+          );
+        if (typeof args.json !== 'string')
+          throw new Error('Session JSON must be a string.');
+        return sessionSummary(importSession(args.json));
       },
     };
   });
@@ -285,6 +479,26 @@ export default function Home() {
         false,
       ],
       [
+        'reservation_reserve',
+        'Reserve the current sample ticket selection after a controlled delay. This single call remains pending while the human can edit the visible ticket count. Returns only after committing or rejecting a stale write. The delay models application work; no network booking or payment happens. Use lab_hold_response to hold completion, reservation_release to finish early, or reservation_cancel to cancel.',
+        schema({ delayMs: { type: 'integer', minimum: 500, maximum: 30000 } }, [
+          'delayMs',
+        ]),
+        false,
+      ],
+      [
+        'reservation_cancel',
+        'Cancel the pending sandbox reservation without committing its captured selection. A pending reservation_reserve call will reject with AbortError. The current human selection is preserved.',
+        schema(),
+        false,
+      ],
+      [
+        'lab_hold_response',
+        'Hold completion of a running asynchronous reservation at its current checkpoint. The original reservation_reserve call stays pending until reservation_release or reservation_cancel. Only changes this test fixture.',
+        schema(),
+        false,
+      ],
+      [
         'lab_inject_human_edit',
         'Simulate a human changing the sample ticket quantity during an experiment. Records this as an injected action, not a real human interaction. Only the disposable fixture changes.',
         schema({ quantity: { type: 'integer', minimum: 1, maximum: 4 } }, [
@@ -307,7 +521,7 @@ export default function Home() {
       [
         'lab_replay',
         'Reset this disposable fixture and replay the last completed recorded sequence under the selected implementation. Uses the included sample when there is no recording. Replayed actions are labeled scripted, not live agent actions.',
-        schema({ mode: modes }, ['mode']),
+        schema({ mode: modes, sessionId: { type: 'string' } }, ['mode']),
         false,
       ],
       [
@@ -328,6 +542,30 @@ export default function Home() {
         schema(),
         true,
       ],
+      [
+        'lab_list_sessions',
+        'Read metadata for the current recording and sessions saved locally in this browser. Does not change the application or transmit recordings.',
+        schema(),
+        true,
+      ],
+      [
+        'lab_open_session',
+        'Open a saved session in the visible receipt inspector. Does not restore application state or execute recorded actions.',
+        schema({ sessionId: { type: 'string' } }, ['sessionId']),
+        false,
+      ],
+      [
+        'lab_export_session',
+        'Return session JSON for the current or named recording without downloading or executing files.',
+        schema({ sessionId: { type: 'string' } }),
+        true,
+      ],
+      [
+        'lab_import_session',
+        'Validate and import reservation-v2 session JSON into this browser archive, and open it for inspection. This stores data locally but never executes the imported recording. Use lab_replay with its sessionId to explicitly replay supported actions.',
+        schema({ json: { type: 'string', maxLength: 1500000 } }, ['json']),
+        false,
+      ],
     ];
     const tools: SiteTool[] = definitions.map(
       ([name, description, inputSchema, readOnlyHint]) => ({
@@ -335,10 +573,20 @@ export default function Home() {
         description,
         inputSchema,
         annotations: { readOnlyHint },
-        execute(input) {
+        execute(input, options) {
           let result: unknown;
           flushSync(() => {
-            result = actionsRef.current[name](input);
+            const invoke = () => actionsRef.current[name](input, options);
+            result = [
+              'reservation_capture',
+              'reservation_reserve',
+              'reservation_release',
+              'reservation_cancel',
+              'lab_hold_response',
+              'lab_inject_human_edit',
+            ].includes(name)
+              ? adapter.recorder.run(name, input, 'native', invoke)
+              : invoke();
           });
           return result;
         },
@@ -347,7 +595,7 @@ export default function Home() {
     return registerSiteTools(tools, (status, count, registrationError) =>
       setNative({ status, count, error: registrationError }),
     );
-  }, []);
+  }, [adapter]);
   useEffect(
     () => () => {
       generation.current++;
@@ -399,7 +647,7 @@ export default function Home() {
                 : 'Connecting tools'}
         </span>
         <span className="version-chip">
-          EXPERIMENTAL <span>v0.1</span>
+          EXPERIMENTAL <span>v0.2</span>
         </span>
       </header>
       <div className="workspace">
@@ -466,17 +714,22 @@ export default function Home() {
             <div className="proof-actions">
               <Button
                 variant="outline"
-                disabled={playing || !hasRecording}
-                onClick={() => void playSequence(chooseRecipe(), state.mode)}
+                disabled={playing || !!operation || !hasRecording}
+                onClick={() =>
+                  void playSequence(chooseRecipe(), state.mode).catch(() => {})
+                }
               >
                 <RotateCcw />
                 Replay recording
               </Button>
               <Button
                 className="sample-button"
-                disabled={playing}
+                disabled={playing || !!operation}
                 onClick={() =>
-                  void playSequence(structuredClone(SAMPLE_RECIPE), state.mode)
+                  void playSequence(
+                    structuredClone(SAMPLE_RECIPE),
+                    state.mode,
+                  ).catch(() => {})
                 }
               >
                 <Play />
@@ -527,7 +780,7 @@ export default function Home() {
                           aria-label="Remove one ticket"
                           disabled={playing || reservation.quantity <= 1}
                           onClick={() =>
-                            run(() => lab.edit(reservation.quantity - 1))
+                            run(() => adapter.edit(reservation.quantity - 1))
                           }
                         >
                           <Minus size={14} />
@@ -541,7 +794,7 @@ export default function Home() {
                           aria-label="Add one ticket"
                           disabled={playing || reservation.quantity >= 4}
                           onClick={() =>
-                            run(() => lab.edit(reservation.quantity + 1))
+                            run(() => adapter.edit(reservation.quantity + 1))
                           }
                         >
                           <Plus size={14} />
@@ -564,6 +817,13 @@ export default function Home() {
                         <>
                           <ShieldCheck size={16} />
                           Selection protected · refresh required
+                        </>
+                      ) : reservation.phase === 'cancelled' ? (
+                        <>Cancelled · nothing committed</>
+                      ) : operation ? (
+                        <>
+                          <Activity size={16} />
+                          Working · your selection is still editable
                         </>
                       ) : (
                         <>
@@ -606,27 +866,54 @@ export default function Home() {
                 </span>
                 <h3>
                   {reservation.pending
-                    ? 'Change the human’s choice.'
+                    ? 'Change selection while it runs.'
                     : reservation.phase === 'blocked'
                       ? 'Read again. Finish safely.'
-                      : 'Hold the agent’s write.'}
+                      : 'Start a delayed reservation.'}
                 </h3>
                 <p>
                   {reservation.pending
-                    ? 'Use the − or + control in the ticket app. Then release the captured write.'
+                    ? operation
+                      ? 'The call is still running. Change the ticket count before it finishes, or hold completion to inspect it.'
+                      : 'Use the − or + control in the ticket app. Then release the captured write.'
                     : reservation.phase === 'blocked'
-                      ? 'The old write was refused. Capture the current selection and release it to complete the reservation.'
-                      : 'Capture the selection, change the ticket count, then release the old write.'}
+                      ? 'The old write was refused. Retry to read the current selection and complete the reservation.'
+                      : 'One call starts, waits, and completes. Change the tickets during the wait to expose the stale write.'}
                 </p>
+                <label className="delay-control">
+                  Finish after
+                  <select
+                    aria-label="Completion delay"
+                    value={delayMs}
+                    disabled={playing || !!reservation.pending}
+                    onChange={(event) => setDelayMs(Number(event.target.value))}
+                  >
+                    <option value={8000}>8 seconds</option>
+                    <option value={15000}>15 seconds</option>
+                    <option value={30000}>30 seconds</option>
+                  </select>
+                </label>
                 <Button
                   className="primary-action"
                   disabled={playing || !!reservation.pending}
-                  onClick={() => run(() => lab.begin())}
+                  onClick={() => {
+                    setError('');
+                    void adapter.reserve(delayMs).catch((error) => {
+                      if (
+                        !(error instanceof Error && error.name === 'AbortError')
+                      )
+                        setError(
+                          error instanceof Error
+                            ? error.message
+                            : 'Reservation failed.',
+                        );
+                    });
+                  }}
                 >
                   <Bot />
                   {reservation.phase === 'blocked'
-                    ? 'Capture fresh selection'
-                    : 'Capture selection'}
+                    ? 'Retry current selection'
+                    : 'Start reservation'}
                   <ArrowRight />
                 </Button>
                 <div
@@ -635,9 +922,16 @@ export default function Home() {
                   <span className="checkpoint-line" />
                   <span>
                     <Pause size={13} />
-                    {reservation.pending
-                      ? `Holding revision ${reservation.pending.revision}`
-                      : 'Before commit'}
+                    {operation ? (
+                      <CompletionClock
+                        dueAt={operation.dueAt}
+                        delayMs={operation.delayMs}
+                      />
+                    ) : reservation.pending ? (
+                      `Holding revision ${reservation.pending.revision}`
+                    ) : (
+                      'Before commit'
+                    )}
                   </span>
                   <span className="checkpoint-line" />
                 </div>
@@ -645,11 +939,49 @@ export default function Home() {
                   variant="outline"
                   className="release-button"
                   disabled={playing || !reservation.pending}
-                  onClick={() => run(() => lab.release())}
+                  onClick={() => run(() => adapter.release())}
                 >
                   <Play />
-                  Release pending write
+                  {operation ? 'Complete now' : 'Release pending write'}
                 </Button>
+                <div className="operation-actions">
+                  <Button
+                    variant="outline"
+                    disabled={playing || !operation || operation.held}
+                    onClick={() => run(() => adapter.hold())}
+                  >
+                    <Pause />
+                    Hold completion
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={playing || !reservation.pending}
+                    onClick={() => run(() => adapter.cancel())}
+                  >
+                    <X />
+                    Cancel operation
+                  </Button>
+                </div>
+                <p className="operation-note">
+                  The delay models application work locally. No network booking
+                  is made. Native agent calls and manual launches are labeled in
+                  the recorder.
+                </p>
+                <details className="legacy-controls">
+                  <summary>Step-by-step capture controls</summary>
+                  <Button
+                    variant="outline"
+                    disabled={playing || !!reservation.pending}
+                    onClick={() => run(() => adapter.capture())}
+                  >
+                    <Bot />
+                    Capture selection
+                  </Button>
+                  <p>
+                    Capture returns immediately. Use the release control above
+                    to commit this staged write.
+                  </p>
+                </details>
                 <div className="rule-box">
                   <ShieldCheck size={17} />
                   <div>
@@ -829,6 +1161,28 @@ export default function Home() {
               </div>
             </div>
           </section>
+          <SessionPanel
+            live={recording}
+            sessions={archiveState.sessions}
+            selected={selectedSession}
+            onSelect={setSelectedSession}
+            warning={archiveState.warning}
+            busy={playing || !!operation}
+            onImport={importSession}
+            onExport={(session) =>
+              download(
+                `interleave-session-${session.id}.json`,
+                JSON.stringify(session, null, 2),
+                'application/json',
+              )
+            }
+            onReplay={(session) =>
+              run(() => {
+                const recipe = recipeFromSession(session);
+                void playSequence(recipe, state.mode).catch(() => {});
+              })
+            }
+          />
           <section className="proof-panel">
             <div className="proof-heading">
               <div>
@@ -838,7 +1192,7 @@ export default function Home() {
               <div className="proof-actions">
                 <Button
                   variant="outline"
-                  disabled={playing}
+                  disabled={playing || !!operation}
                   onClick={() => run(compare)}
                 >
                   <Workflow />
@@ -846,7 +1200,7 @@ export default function Home() {
                 </Button>
                 <Button
                   variant="outline"
-                  disabled={playing}
+                  disabled={playing || !!operation}
                   onClick={() => run(minimize)}
                 >
                   <Minimize2 />
@@ -855,7 +1209,7 @@ export default function Home() {
               </div>
             </div>
             <p className="proof-caption">
-              Uses your last completed recording, or the included six-step
+              Uses your latest witnessed failure, or the included six-step
               sample.
             </p>
             {comparison && (
@@ -918,11 +1272,13 @@ export default function Home() {
                     <span key={i}>
                       {command.type === 'begin'
                         ? 'Capture selection'
-                        : command.type === 'edit'
-                          ? `Human → ${command.quantity} ticket${command.quantity === 1 ? '' : 's'}`
-                          : command.type === 'release'
-                            ? 'Release write'
-                            : 'Observe'}
+                        : command.type === 'cancel'
+                          ? 'Cancel operation'
+                          : command.type === 'edit'
+                            ? `Human → ${command.quantity} ticket${command.quantity === 1 ? '' : 's'}`
+                            : command.type === 'release'
+                              ? 'Release write'
+                              : 'Observe'}
                     </span>
                   ))}
                 </div>
@@ -934,22 +1290,22 @@ export default function Home() {
                 <span>
                   A regression test you can keep.
                   <small>
-                    Runs against this project’s actual fixture engine.
+                    Checks delayed completion and recovery through this adapter.
                   </small>
                 </span>
               </div>
               <Button
                 variant="outline"
-                disabled={playing}
+                disabled={playing || !!operation}
                 onClick={() =>
                   run(() => {
                     download(
                       recipeName,
-                      exportRegression(chooseRecipe()),
+                      exportAsyncRegression(chooseFailureRecipe()),
                       'text/javascript',
                     );
                     setNotice(
-                      'Test exported. Save under tests/ in this project, then run it with Node 22.13 or later.',
+                      'Async test exported. Save under tests/ and run with Node 22.13+. The guarded implementation must preserve the selection and complete recovery; INTERLEAVE_IMPLEMENTATION=unguarded makes the same test fail.',
                     );
                   })
                 }
@@ -967,7 +1323,7 @@ export default function Home() {
           <footer className="workbench-footer">
             <span>
               <span className="status-dot" />
-              All fixture state stays in this tab.
+              Sessions saved in this browser · no recording uploads.
             </span>
             <span>
               Real mutations. Explicit checkpoints. Observable outcomes.

@@ -5,13 +5,14 @@ export type Command =
   | { type: 'observe' }
   | { type: 'begin' }
   | { type: 'edit'; quantity: number }
+  | { type: 'cancel' }
   | { type: 'release' };
 export interface Reservation {
   quantity: number;
   revision: number;
   humanIntent: number;
   confirmed: number | null;
-  phase: 'ready' | 'paused' | 'committed' | 'blocked';
+  phase: 'ready' | 'paused' | 'committed' | 'blocked' | 'cancelled';
   pending: { id: number; quantity: number; revision: number } | null;
 }
 export interface TraceEvent {
@@ -276,9 +277,26 @@ export class ReservationLab {
         return this.edit(command.quantity, source);
       case 'release':
         return this.release(source);
+      case 'cancel':
+        return this.cancel(source);
       default:
         throw new Error('Unknown scenario command.');
     }
+  }
+  cancel(source: Source = 'manual') {
+    const current = this.state.reservation;
+    if (!current.pending)
+      throw new Error('There is no pending reservation to cancel.');
+    return this.record(
+      { type: 'cancel' },
+      source,
+      'system',
+      'cancelled',
+      'Pending reservation cancelled',
+      'The pending operation was cancelled without committing its captured selection.',
+      { ...copy(current), pending: null, phase: 'cancelled' },
+      null,
+    );
   }
 }
 export function replayRecipe(

@@ -1378,3 +1378,271 @@ h1 {
     padding: 0 5px;
   }
 }
+
+/* Asynchronous execution and opt-in session receipts. */
+.delay-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: #a9b8af;
+  margin: 0 0 1rem;
+}
+.delay-control select,
+.session-toolbar select {
+  background: #17221d;
+  color: #e3ece6;
+  border: 1px solid #354139;
+  border-radius: 6px;
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+  min-height: 38px;
+}
+.delay-control select:focus-visible,
+.session-toolbar select:focus-visible {
+  outline: 2px solid #a6e6bb;
+  outline-offset: 3px;
+}
+.operation-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+.operation-actions button {
+  flex: 1;
+  min-height: 36px;
+  font-size: 0.875rem;
+}
+.operation-note,
+.legacy-controls p {
+  font-size: 0.8125rem !important;
+  line-height: 1.6 !important;
+  color: #98aa9e !important;
+  margin: 0.9rem 0 !important;
+}
+.legacy-controls {
+  border-top: 1px solid #2a3930;
+  padding-top: 0.9rem;
+  margin-top: 0.75rem;
+}
+.legacy-controls summary {
+  font-size: 0.875rem;
+  color: #b2c4b8;
+  cursor: pointer;
+  margin-bottom: 0.8rem;
+}
+.session-panel {
+  margin-top: 30px;
+  padding: 24px;
+  background: #141e19;
+  border: 1px solid #2b3a30;
+  border-radius: 10px;
+}
+.session-panel h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin: 6px 0;
+  letter-spacing: -0.03em;
+}
+.recording-badge {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.75rem;
+  color: #a6e6bb;
+  border: 1px solid #42624d;
+  background: #1d3023;
+  padding: 6px 9px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.recording-badge.archived {
+  color: #c2cad4;
+  border-color: #455163;
+  background: #222b35;
+}
+.session-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 20px 0 14px;
+}
+.session-toolbar label {
+  font-size: 0.875rem;
+  color: #aebfb2;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 190px;
+  max-width: 100%;
+}
+.session-toolbar select {
+  width: 100%;
+  max-width: 380px;
+  font-size: 0.875rem;
+}
+.session-toolbar .proof-actions {
+  flex-wrap: wrap;
+}
+.session-toolbar button {
+  min-height: 36px;
+  font-size: 0.875rem;
+}
+.receipt-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  color: #9cb2a3;
+  font-size: 0.8125rem;
+  padding: 10px 0 16px;
+}
+.receipt-summary strong {
+  color: #f3c689;
+  font-weight: 500;
+}
+.receipt-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  border: 1px solid #2d3b32;
+  border-radius: 7px;
+  overflow: hidden;
+}
+.receipt-list {
+  max-height: 410px;
+  overflow: auto;
+  min-height: 230px;
+  background: #111a15;
+}
+.receipt-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid #26342b;
+  background: transparent;
+  color: #d9e6dd;
+  cursor: pointer;
+}
+.receipt-item:hover,
+.receipt-item.selected {
+  background: #22362a;
+}
+.receipt-item:focus-visible {
+  outline: 2px solid #a6e6bb;
+  outline-offset: -3px;
+}
+.receipt-item > span:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+.receipt-item strong {
+  display: block;
+  font-weight: 500;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+.receipt-item small {
+  display: block;
+  font-size: 0.75rem;
+  color: #9eb2a5;
+  margin-top: 4px;
+}
+.receipt-status {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.75rem;
+  color: #a6c7b0;
+}
+.receipt-item.pending .receipt-status {
+  color: #eac987;
+}
+.receipt-item.rejected .receipt-status {
+  color: #ffaaa0;
+}
+.receipt-item.cancelled .receipt-status,
+.receipt-item.interrupted .receipt-status {
+  color: #c7badf;
+}
+.receipt-inspector {
+  padding: 18px;
+  border-left: 1px solid #2d3b32;
+  max-height: 410px;
+  overflow: auto;
+  min-width: 0;
+}
+.receipt-inspector h3 {
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+  color: #dce8df;
+  margin: 16px 0 5px;
+}
+.receipt-inspector > p {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: #9eb2a5;
+  margin-bottom: 15px;
+}
+.receipt-inspector details {
+  border-top: 1px solid #2e3c32;
+  padding: 12px 0;
+  font-size: 0.875rem;
+}
+.receipt-inspector summary {
+  cursor: pointer;
+  color: #bccfc1;
+}
+.receipt-inspector pre {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.75rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #b1cfbb;
+  background: #101812;
+  padding: 12px;
+  border-radius: 5px;
+  margin-top: 10px;
+}
+.session-footnote {
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  color: #96aa9b;
+  margin: 16px 0 0;
+}
+.recorder-download {
+  display: inline-flex;
+  margin-top: 12px;
+  color: #a6e6bb;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  font-size: 0.875rem;
+}
+.recorder-download:hover {
+  color: #d3f5dc;
+}
+@media (max-width: 900px) {
+  .receipt-grid {
+    grid-template-columns: 1fr;
+  }
+  .receipt-inspector {
+    border-left: 0;
+    border-top: 1px solid #2d3b32;
+  }
+  .session-toolbar {
+    align-items: stretch;
+  }
+  .session-panel {
+    padding: 18px;
+  }
+  .session-panel .proof-heading {
+    align-items: start;
+    gap: 12px;
+  }
+  .recording-badge {
+    white-space: normal;
+  }
+}

@@ -1,6 +1,6 @@
 # Interleave — WebMCP Lab
 
-A working first slice of a collaboration testing lab. Capture a reservation selection, change it while a write is held at a checkpoint, and release the write. Compare the seeded stale-write defect with a version check that preserves the newer human choice.
+A collaboration testing lab with a real asynchronous reservation operation, opt-in tool recording, saved sessions, and a deliberately seeded stale-write defect.
 
 ## Run
 
@@ -11,49 +11,69 @@ npm install
 npm run dev
 ```
 
-Open the Local URL printed by the server. Click **Run sample** for a clearly labeled scripted demonstration. For a manual experiment, click **Capture selection**, change the ticket count, then **Release pending write**. Switch to **With version guard** and repeat. A blocked write requires a fresh capture before a reservation can complete.
+Open the Local URL printed by the server. Click **Start reservation**, change the ticket count during its delay, and let the operation finish. The original implementation commits its captured quantity and can overwrite the newer human choice. **With version guard** refuses the stale write; **Retry current selection** then completes the reservation correctly.
 
-Use **Replay recording** to repeat the latest completed sequence. **Compare modes** executes the same recorded commands in two isolated stores. **Reduce failure** removes dispensable commands and re-runs candidate sequences. **Export regression** downloads a test that imports this project's actual engine; place it in `tests/` and run it with Node.
+**Hold completion** keeps the same asynchronous call pending. **Complete now** finishes it early. **Cancel operation** rejects it without committing. The optional step-by-step capture controls preserve the earlier staged demonstration. **Run sample** is explicitly scripted.
+
+The delay models application work in this browser; it is not a merchant or network request. No payment or real ticket booking occurs.
+
+## Recorder and saved sessions
+
+The session recorder captures application tool arguments, results, errors, cancellation, timestamps, source, and before/after state. Semantic state changes are recorded during pending calls, so the human edit is visible even if a later write overwrites it. Lab navigation and session-management tools are excluded from application recordings.
+
+Up to 10 recent sessions are saved in this browser and origin, within the storage limit. Reopen them in the **Session recorder**, inspect receipts, download JSON, or import an exported recording. Storage failures are visible and JSON download remains available. A document closed before a call's result was recorded marks that call interrupted; it is not treated as completed.
+
+**Replay session** validates the recording and executes supported reservation actions at actual asynchronous checkpoints. It preserves relevant command ordering, not wall-clock timing or model decisions. It does not execute arbitrary uploaded code. Truncated, unfinished, unknown-adapter, or unsupported-action recordings cannot be advertised as reliable replays.
+
+**Compare modes**, **Reduce failure**, and **Export regression** use the latest witnessed failure, or the included sample. A later successful recovery does not hide its reproduction. Reduction remains specific to this reservation rule. The six-step sample reduces to capture, human edit, completion.
+
+## Regression export
+
+**Export regression** emits a single asynchronous adapter test that checks preservation of the latest selection and completed recovery. Its default guarded implementation passes. The same test must fail against the original implementation:
 
 ```sh
-node --test tests/*.test.mjs
-npx tsc --noEmit
-npm run build
+node --test tests/interleave-async-regression.test.mjs
+INTERLEAVE_IMPLEMENTATION=unguarded node --test tests/interleave-async-regression.test.mjs
 ```
+
+The second command is an intentionally failing verification. The older fixture comparison test is retained separately. These exports import this project's adapter; they are not yet portable tests for arbitrary applications or full native-browser/model replays.
 
 ## Native WebMCP
 
-The top-level document registers ten imperative tools through `document.modelContext.registerTool`, with schema validation and AbortSignal cleanup. No fake polyfill is installed. Unsupported browsers retain manual controls and show **Manual mode**.
+The top-level document registers 17 tools through `document.modelContext.registerTool`. Unsupported browsers retain manual controls. Registration uses AbortSignal cleanup; no fake polyfill is installed.
 
-- `lab_read_context`: current state, selected event, and trace.
-- `lab_reset`: reset this disposable fixture with an explicit mode.
-- `reservation_capture`: capture the live selection and stage a write.
-- `lab_inject_human_edit`: inject a labeled sample human action.
-- `reservation_release`: commit the captured selection or reject stale input.
-- `lab_select_event`: select a trace event in the same visible inspector.
-- `lab_replay`: re-execute the latest completed recording, or the sample.
-- `lab_compare_modes`: compute and display outcomes for both modes.
-- `lab_reduce_failure`: reduce and verify the failure sequence.
-- `lab_export_regression`: return regression test source without downloading or executing it.
+- `reservation_reserve({delayMs})` stays pending until completion or cancellation. Valid delay: 500–30000 ms. The human can edit the visible selection during the call.
+- `lab_hold_response({})`, `reservation_release({})`, and `reservation_cancel({})` control the pending operation.
+- `reservation_capture({})` retains the separate capture/release fixture controls.
+- `lab_inject_human_edit({quantity})` injects a clearly labeled human action for automated experiments.
+- `lab_read_context({})`, `lab_reset({mode})`, and `lab_select_event({eventId})` inspect or control the active fixture.
+- `lab_replay({mode,sessionId?})` replays a saved session or the latest completed sequence through asynchronous checkpoints.
+- `lab_compare_modes({})`, `lab_reduce_failure({})`, and `lab_export_regression({})` analyze the completed recipe.
+- `lab_list_sessions({})`, `lab_open_session({sessionId})`, `lab_export_session({sessionId?})`, and `lab_import_session({json})` operate on the local session archive.
 
-An example agent request: “Reset this lab to unguarded, capture the reservation, inject a human change to one ticket, and release the pending write. Inspect the result, then compare modes and reduce the failure.”
+A real agent prompt: “Reserve my current ticket selection with a 30-second delay. I will change the quantity while your call is running. Tell me whether my latest selection was preserved when the operation finishes.”
 
-Manual controls, native calls, and scripted replays are labeled separately. For a real human/agent session, ask the agent to capture, change the ticket count yourself, then ask it to release.
+The browser must support concurrent human interaction while the tool awaits completion. Cancellation from the caller is honored when the browser supplies an execution AbortSignal; explicit lab cancellation also works.
 
-## Scope and evidence
+## Reusable package
 
-The reservation is a local, in-memory test fixture with a deliberately seeded defect. It is not a booking service, backend transaction system, or discovered browser vulnerability. Nothing is charged or sent to a merchant. “PASS” checks preservation of human intent; a guarded rejection does not mean the reservation is complete.
+`packages/recorder` is the dependency-free `@interleave/recorder` package. It accepts an application state reader, optional redaction, semantic transitions, and tool functions. It has no reservation or React dependency. See its README for integration and limitations.
 
-The checkpoint is an explicit capture/release boundary. Replaying a command sequence executes actual fixture logic; it does not rerun a model. Reduction finds a deletion-minimal reproduction for this fixture, not a globally smallest proof. Arbitrary-site adapters, network fault injection, a durable trace backend, and external application integrations are outside this first slice.
+```sh
+npm run build:recorder
+npm pack ./packages/recorder --pack-destination /tmp
+```
 
-Trace downloads record the browser user agent, fixture format/version, provenance, recipe, and before/after application state. This page stores session state only in memory. Refreshing the page clears it.
+This is a local distribution; the package has not been published to npm. The running lab provides a direct download of the built package. The repository and recorder are licensed under MIT. A separate document-state test verifies the generic recorder API. An independently developed external application integration remains outstanding.
 
-The rules checked here are application expectations, not universal WebMCP requirements. WebMCP browser behavior is evolving; see the [specification](https://webmachinelearning.github.io/webmcp/) and [OpenAI site tools guide](https://learn.chatgpt.com/docs/webmcp).
+## Checks
 
-## Validation of this slice
+```sh
+node --test tests/*.test.mjs
+npm run lint
+npm run build
+```
 
-On September 3, 2026, all ten tools were discovered and invoked through the Codex browser's native WebMCP capability against the local running page. The observed unguarded sequence committed two tickets after an injected edit to one. Replaying it with the guard blocked the stale write; a fresh capture and release then committed one ticket. A separate sequence combined native capture, the visible minus button, and native release, confirming the UI and native tools share state.
+Tests cover autonomous delayed completion, guarded recovery, cancellation, invalid inputs, duplicate calls, reset/replay races, JSON validation, asynchronous replay, generic recording, error preservation, redaction, immutable snapshots, and bounded history. Seeded defects are not claimed as newly discovered bugs.
 
-Invalid quantities, modes, extra arguments, unknown events, release without capture, and duplicate capture were rejected. A healthy recording could not be reduced or exported as a failure. Native comparison, trace selection, reduction, and test export returned results matching the visible page.
-
-Ten engine tests pass. The generated `tests/interleave-regression.test.mjs` adds two passing tests and is an example of the export output. These checks cover the current fixture, not arbitrary websites or universal browser compatibility.
+The rules are application expectations, not universal WebMCP requirements. See the [current specification](https://webmachinelearning.github.io/webmcp/).

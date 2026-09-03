@@ -1,0 +1,11 @@
+{
+  "name": "@interleave/recorder",
+  "version": "0.2.0",
+  "description": "Opt-in tool and application-state recorder for human-agent collaboration testing",
+  "license": "MIT",
+  "type": "module",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "files": ["dist", "README.md"],
+  "scripts": { "build": "tsc -p tsconfig.json" },
+  "engines": { "node": ">=22.13.0" }
+}

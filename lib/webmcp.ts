@@ -3,7 +3,7 @@ export interface SiteTool {
   description: string;
   inputSchema: object;
   annotations: { readOnlyHint: boolean };
-  execute: (input: unknown) => unknown;
+  execute: (input: unknown, options?: { signal?: AbortSignal }) => unknown;
 }
 interface NativeContext {
   registerTool(
