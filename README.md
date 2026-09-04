@@ -479,6 +479,7 @@ The proposed Plane patch is validated separately in Plane's official Docker test
 
 - The Plane integration is based on public issue [`makeplane/plane#9674`](https://github.com/makeplane/plane/issues/9674) and source pinned to [`da1a7ab`](https://github.com/makeplane/plane/commit/da1a7ab85012d16836459a10dd92ec55eb739c69). The downloadable derivative patch is distributed under Plane's AGPL-3.0 license.
 - The TodoMVC adapter uses reducer behavior from [`tastejs/todomvc`](https://github.com/tastejs/todomvc/tree/ff43b02e59dfa604386bb382034b2cd07c2bcd8a/examples/react), pinned to `ff43b02e`, under MIT.
+- The marketing and dashboard presentation adapt the MIT-licensed [Lynx UI template](https://github.com/damishafe/Lynx), copyright 2026 damishafe.
 - Interleave uses the [WebMCP specification](https://webmachinelearning.github.io/webmcp/) and open-source Next.js, React, TypeScript, Tailwind CSS, Base UI, Lucide, Vinext, Manrope, and Geist Mono packages.
 - Full notices and license boundaries are documented in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and [`docs/PLANE-PATCH-LICENSE.md`](docs/PLANE-PATCH-LICENSE.md).
 
