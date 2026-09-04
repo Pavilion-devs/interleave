@@ -16,7 +16,7 @@ import { MarketingHeader } from '@/components/marketing/header';
 import { Reveal } from '@/components/marketing/reveal';
 
 const installCommand =
-  'npm install https://interleave-webmcp-lab.asaborodaniel.chatgpt.site/interleave-recorder-0.2.0.tgz';
+  'npm install https://interleave-iota.vercel.app/interleave-recorder-0.2.0.tgz';
 
 const example = `import { SessionRecorder } from '@interleave/recorder';
 

@@ -7,7 +7,7 @@ A dependency-free, framework-independent recorder for application tools and sema
 Install the current public build directly from Interleave:
 
 ```sh
-npm install https://interleave-webmcp-lab.asaborodaniel.chatgpt.site/interleave-recorder-0.2.0.tgz
+npm install https://interleave-iota.vercel.app/interleave-recorder-0.2.0.tgz
 ```
 
 You can also build from the repository root with `npm run build:recorder` and pack the local package. The lab's source imports `src/index.ts`. No npm registry publication is implied.

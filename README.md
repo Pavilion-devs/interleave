@@ -4,7 +4,7 @@
 
 Interleave records real pending tool calls alongside human state changes, catches violated application rules, replays and minimizes the witnessed failure, and exports a deterministic regression. The flagship `/plane` experience turns public issue [`makeplane/plane#9674`](https://github.com/makeplane/plane/issues/9674) into a complete proof and a tested upstream patch. Reservation and TodoMVC adapters show that the recorder is reusable across application models.
 
-- Live flagship: [`/plane`](https://interleave-webmcp-lab.asaborodaniel.chatgpt.site/plane)
+- Live flagship: [`/plane`](https://interleave-iota.vercel.app/plane)
 - Public repository: [`Pavilion-devs/interleave`](https://github.com/Pavilion-devs/interleave)
 - Native browser acceptance: [`public/webmcp-plane-acceptance.json`](public/webmcp-plane-acceptance.json)
 - Plane integration notes: [`docs/PLANE-9674.md`](docs/PLANE-9674.md)
@@ -101,10 +101,10 @@ The browser must support concurrent human interaction while the tool awaits comp
 The current build is available directly from the public Interleave site:
 
 ```sh
-npm install https://interleave-webmcp-lab.asaborodaniel.chatgpt.site/interleave-recorder-0.2.0.tgz
+npm install https://interleave-iota.vercel.app/interleave-recorder-0.2.0.tgz
 ```
 
-The [`/integrate`](https://interleave-webmcp-lab.asaborodaniel.chatgpt.site/integrate) page shows the complete three-step adoption path. The package records supplied state and actions; each application continues to define its own correctness rule, replay semantics, and redaction policy.
+The [`/integrate`](https://interleave-iota.vercel.app/integrate) page shows the complete three-step adoption path. The package records supplied state and actions; each application continues to define its own correctness rule, replay semantics, and redaction policy.
 
 ```sh
 npm run build:recorder
