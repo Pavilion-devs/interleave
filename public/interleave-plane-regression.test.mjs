@@ -2,46 +2,98 @@
 // Pinned source: preview@da1a7ab85012d16836459a10dd92ec55eb739c69.
 // Default = proposed compare-and-set patch. Set INTERLEAVE_IMPLEMENTATION=unguarded
 // to prove this test catches Plane's current unconditional worker write.
+// Standalone: node --test interleave-plane-regression.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PlaneAdapter, replayPlaneAsync } from '../lib/plane/adapter.ts';
 
 const recipe = [
   {
-    type: 'observe',
+    "type": "start_crawl",
+    "title": "Production runbook"
   },
   {
-    type: 'start_crawl',
-    title: 'Production runbook',
+    "type": "edit_metadata",
+    "title": "Human verified runbook"
   },
   {
-    type: 'edit_metadata',
-    title: 'Human verified runbook',
-  },
-  {
-    type: 'observe',
-  },
-  {
-    type: 'release',
-  },
+    "type": "release"
+  }
 ];
-const expectedMetadataTitle = 'Human verified runbook';
-const mode =
-  process.env.INTERLEAVE_IMPLEMENTATION === 'unguarded'
-    ? 'unguarded'
-    : 'guarded';
+const expectedMetadataTitle = "Human verified runbook";
+const mode = process.env.INTERLEAVE_IMPLEMENTATION === 'unguarded'
+  ? 'unguarded'
+  : 'guarded';
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+async function replayPlane(commands, implementation) {
+  const link = {
+    displayTitle: 'Incident response',
+    metadataTitle: 'Plane documentation',
+    revision: 0,
+  };
+  let checkpoint = null;
+  let worker = null;
+  let completion = null;
+
+  for (const command of commands) {
+    if (command.type === 'observe') continue;
+    if (command.type === 'start_crawl') {
+      assert.equal(worker, null, 'Only one crawl may be pending.');
+      link.displayTitle = command.title;
+      link.revision += 1;
+      const queuedRevision = link.revision;
+      checkpoint = deferred();
+      worker = (async () => {
+        await checkpoint.promise;
+        if (
+          implementation === 'guarded' &&
+          link.revision !== queuedRevision
+        ) {
+          completion = 'blocked';
+          return;
+        }
+        link.metadataTitle = 'Plane documentation';
+        link.revision += 1;
+        completion = 'applied';
+      })();
+      continue;
+    }
+    if (command.type === 'edit_metadata') {
+      link.metadataTitle = command.title;
+      link.revision += 1;
+      continue;
+    }
+    if (command.type === 'release') {
+      assert.ok(checkpoint && worker, 'The crawl must be queued first.');
+      checkpoint.resolve();
+      await worker;
+      checkpoint = null;
+      worker = null;
+      continue;
+    }
+    throw new Error(`Unsupported command: ${command.type}`);
+  }
+
+  assert.equal(worker, null, 'The recording ended with pending work.');
+  const passed = link.metadataTitle === expectedMetadataTitle;
+  return {
+    link,
+    completion,
+    passed,
+    message: passed
+      ? 'The stale crawl was blocked and the human edit survived.'
+      : 'The stale crawl overwrote the newer human edit.',
+  };
+}
 
 test('a queued Plane crawl cannot overwrite a newer explicit metadata edit', async () => {
-  const adapter = new PlaneAdapter(mode);
-  try {
-    const result = await replayPlaneAsync(recipe, adapter);
-    assert.equal(
-      result.assertion?.passed,
-      true,
-      result.assertion?.message ?? 'The preservation rule was not evaluated.',
-    );
-    assert.equal(result.document.link.metadata.title, expectedMetadataTitle);
-  } finally {
-    adapter.dispose();
-  }
+  const result = await replayPlane(recipe, mode);
+  assert.equal(result.passed, true, result.message);
+  assert.equal(result.link.metadataTitle, expectedMetadataTitle);
+  assert.equal(result.completion, 'blocked');
 });

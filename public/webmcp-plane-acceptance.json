@@ -108,7 +108,7 @@
   "exports": {
     "regression": {
       "filename": "interleave-plane-regression.test.mjs",
-      "generatedCharacters": 1243,
+      "generatedCharacters": 2952,
       "recipeSteps": 3
     },
     "upstreamPatch": {

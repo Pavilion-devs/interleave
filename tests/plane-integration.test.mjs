@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import {
   PLANE_COMMIT,
@@ -133,10 +134,12 @@ test('unknown and unfinished imported Plane sessions cannot replay', async () =>
 });
 
 test('generated regression passes proposed and fails current Plane behavior', async () => {
+  const standaloneDirectory = await mkdtemp(
+    join(tmpdir(), 'interleave-plane-regression-'),
+  );
   const projectTest = join(
-    process.cwd(),
-    'tests',
-    'generated-plane-regression.test.mjs',
+    standaloneDirectory,
+    'interleave-plane-regression.test.mjs',
   );
   try {
     await writeFile(projectTest, exportPlaneRegression(SAMPLE_PLANE_RECIPE));
@@ -162,7 +165,7 @@ test('generated regression passes proposed and fails current Plane behavior', as
       'Current Plane behavior should fail the exported test.',
     );
   } finally {
-    await rm(projectTest, { force: true });
+    await rm(standaloneDirectory, { force: true, recursive: true });
   }
 });
 
