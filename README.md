@@ -7,7 +7,7 @@ Interleave records real pending tool calls alongside human state changes, catche
 - Live flagship: [`/plane`](https://interleave-webmcp-lab.asaborodaniel.chatgpt.site/plane)
 - Public repository: [`Pavilion-devs/interleave`](https://github.com/Pavilion-devs/interleave)
 - Native browser acceptance: [`public/webmcp-plane-acceptance.json`](public/webmcp-plane-acceptance.json)
-- Build plan and demo spine: [`plan.md`](plan.md)
+- Plane integration notes: [`docs/PLANE-9674.md`](docs/PLANE-9674.md)
 
 ## Run
 

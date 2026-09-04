@@ -29,6 +29,17 @@ yarn-error.log*
 # local environment
 .env*
 
+# local agent notes and working plans
+/AGENTS.md
+/CLAUDE.md
+/PLAN.md
+/plan.md
+/.agents/
+/.codex/
+
+# local video production projects and renders
+/videos/
+
 # deployment and generated files
 .vercel
 next-env.d.ts
