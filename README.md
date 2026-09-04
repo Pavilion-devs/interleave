@@ -18,6 +18,10 @@ npm install
 npm run dev
 ```
 
+The default scripts use Next.js for Vercel. The existing OpenAI Sites build is
+available through `npm run dev:sites`, `npm run build:sites`, and
+`npm run start:sites`.
+
 Open the Local URL printed by the server. Click **Start reservation**, change the ticket count during its delay, and let the operation finish. The original implementation commits its captured quantity and can overwrite the newer human choice. **With version guard** refuses the stale write; **Retry current selection** then completes the reservation correctly.
 
 **Hold completion** keeps the same asynchronous call pending. **Complete now** finishes it early. **Cancel operation** rejects it without committing. The optional step-by-step capture controls preserve the earlier staged demonstration. **Run sample** is explicitly scripted.

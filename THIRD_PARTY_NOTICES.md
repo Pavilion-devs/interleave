@@ -1,5 +1,13 @@
 # Third-party notices
 
+## Interface fonts
+
+Interleave self-hosts the Latin subsets of
+[Manrope](https://github.com/sharanda/manrope) and
+[Geist Mono](https://github.com/vercel/geist-font). Both font families are
+distributed under the SIL Open Font License 1.1. The font files are stored in
+`app/fonts` so production builds do not depend on an external font request.
+
 ## TodoMVC React reducer
 
 Interleave's TodoMVC integration adapts the reducer behavior from

@@ -1,15 +1,19 @@
 import type { Metadata } from 'next';
-import { Geist_Mono, Manrope } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 
-const manrope = Manrope({
+const manrope = localFont({
+  src: './fonts/manrope-latin.woff2',
   variable: '--font-geist-sans',
-  subsets: ['latin'],
+  weight: '200 800',
+  display: 'swap',
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: './fonts/geist-mono-latin.woff2',
   variable: '--font-geist-mono',
-  subsets: ['latin'],
+  weight: '100 900',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
