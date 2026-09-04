@@ -16,9 +16,9 @@ const stats = [
     halo: 'shadow-[0_0_60px_-15px_rgba(139,92,246,0.45)]',
   },
   {
-    value: '49/49',
+    value: '50/50',
     title: 'Project checks passing',
-    body: 'Recorder, adapters, replay, minimization, and exported test behavior.',
+    body: '49 core checks plus the exported Plane regression, all passing.',
     gradient: 'from-orange-400/40 to-orange-200/0',
     halo: 'shadow-[0_0_60px_-15px_rgba(249,115,22,0.45)]',
   },
@@ -42,14 +42,24 @@ export function Stats() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         {stats.map((stat) => (
           <div key={stat.title} className="group space-y-4">
-            <div className={`relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[1.75rem] border border-gray-100 bg-white transition-all duration-500 group-hover:-translate-y-1 ${stat.halo}`}>
-              <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient}`} />
+            <div
+              className={`relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[1.75rem] border border-gray-100 bg-white transition-all duration-500 group-hover:-translate-y-1 ${stat.halo}`}
+            >
+              <div
+                className={`absolute inset-0 bg-gradient-to-br ${stat.gradient}`}
+              />
               <div className="absolute inset-3 rounded-[1.5rem] bg-white/85 shadow-[inset_0_1px_0_0_rgba(255,255,255,1)] backdrop-blur-sm" />
-              <span className="relative text-5xl font-semibold tracking-tight text-zinc-900 transition-transform duration-500 group-hover:scale-105 sm:text-6xl">{stat.value}</span>
+              <span className="relative text-5xl font-semibold tracking-tight text-zinc-900 transition-transform duration-500 group-hover:scale-105 sm:text-6xl">
+                {stat.value}
+              </span>
             </div>
             <div>
-              <h3 className="text-base font-semibold tracking-tight text-zinc-900">{stat.title}</h3>
-              <p className="mt-1.5 text-sm font-medium leading-snug text-gray-500">{stat.body}</p>
+              <h3 className="text-base font-semibold tracking-tight text-zinc-900">
+                {stat.title}
+              </h3>
+              <p className="mt-1.5 text-sm font-medium leading-snug text-gray-500">
+                {stat.body}
+              </p>
             </div>
           </div>
         ))}

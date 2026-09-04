@@ -4,7 +4,13 @@ A dependency-free, framework-independent recorder for application tools and sema
 
 ## Use
 
-Build from the repository root with `npm run build:recorder`. The lab's source imports `src/index.ts`; applications can install the built local package or its generated tarball. No npm registry publication is implied.
+Install the current public build directly from Interleave:
+
+```sh
+npm install https://interleave-webmcp-lab.asaborodaniel.chatgpt.site/interleave-recorder-0.2.0.tgz
+```
+
+You can also build from the repository root with `npm run build:recorder` and pack the local package. The lab's source imports `src/index.ts`. No npm registry publication is implied.
 
 ```ts
 import { SessionRecorder } from '@interleave/recorder';

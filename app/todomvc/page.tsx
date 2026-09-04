@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   useEffect,
   useLayoutEffect,
@@ -19,7 +20,6 @@ import {
   ChevronRight,
   CircleDot,
   Download,
-  ExternalLink,
   FileCode2,
   FlaskConical,
   GitBranch,
@@ -92,6 +92,12 @@ type Comparison = {
 };
 
 export default function TodoMvcLab() {
+  const pathname = usePathname();
+  const view = pathname.endsWith('/tracker')
+    ? 'tracker'
+    : pathname.endsWith('/proof')
+      ? 'proof'
+      : 'incident';
   const [adapter] = useState(() => new TodoAdapter());
   const [archive] = useState(() => new TodoSessionArchive());
   const state = useSyncExternalStore(
@@ -114,8 +120,9 @@ export default function TodoMvcLab() {
     archive.getSnapshot,
     archive.getServerSnapshot,
   );
-  const [selectedSession, setSelectedSession] =
-    useState<Session<TodoRecordedState> | null>(null);
+  const [selectedSession, setSelectedSession] = useState<
+    Session<TodoRecordedState> | null | undefined
+  >(undefined);
   const [delayMs, setDelayMs] = useState(15000);
   const [title, setTitle] = useState('');
   const [error, setError] = useState('');
@@ -214,14 +221,47 @@ export default function TodoMvcLab() {
     setComparison(null);
     setReduction(null);
   };
+  const archivedRecipe = (failureOnly = false) => {
+    const candidates = selectedSession
+      ? [
+          selectedSession,
+          ...archive
+            .getSnapshot()
+            .sessions.filter((session) => session.id !== selectedSession.id),
+        ]
+      : archive.getSnapshot().sessions;
+    for (const session of candidates) {
+      if (
+        failureOnly &&
+        (!session.latestState.assertion || session.latestState.assertion.passed)
+      )
+        continue;
+      try {
+        return todoRecipeFromSession(session);
+      } catch {
+        continue;
+      }
+    }
+    return null;
+  };
   const chooseRecipe = () =>
     structuredClone(
-      savedRecipe.current.length ? savedRecipe.current : SAMPLE_TODO_RECIPE,
+      savedRecipe.current.length
+        ? savedRecipe.current
+        : (archivedRecipe() ?? SAMPLE_TODO_RECIPE),
     );
   const chooseFailure = () =>
     structuredClone(
-      failureRecipe.current.length ? failureRecipe.current : SAMPLE_TODO_RECIPE,
+      failureRecipe.current.length
+        ? failureRecipe.current
+        : (archivedRecipe(true) ?? SAMPLE_TODO_RECIPE),
     );
+  const canReplay = hasRecording || Boolean(archivedRecipe());
+  const visibleSession =
+    selectedSession === undefined && view === 'tracker'
+      ? (archiveState.sessions.find((session) => session.id !== recording.id) ??
+        null)
+      : (selectedSession ?? null);
   const play = async (recipe: TodoCommand[], mode: Mode, animate = true) => {
     checkBusy();
     reset(mode);
@@ -598,10 +638,17 @@ export default function TodoMvcLab() {
   const completedCount = documentState.todos.length - activeCount;
 
   return (
-    <main className="lab-app todo-lab">
+    <main className={`lab-app todo-lab todomvc-view-${view}`}>
       <div className="workspace">
         <AppSidebar
-          active="todomvc"
+          context="todomvc"
+          active={
+            view === 'tracker'
+              ? 'tracker'
+              : view === 'proof'
+                ? 'proof'
+                : 'todomvc'
+          }
           scenarioHeading="CURRENT SCENARIO"
           scenarioTitle="Delayed clear"
           scenarioDetail="Human add × stale replacement"
@@ -613,13 +660,30 @@ export default function TodoMvcLab() {
         <section className="workbench">
           <header className="app-header">
             <div>
-              <Link className="brand" href="/" prefetch={false} aria-label="Interleave home">
-                TodoMVC adapter
+              <Link
+                className="brand"
+                href="/"
+                prefetch={false}
+                aria-label="Interleave home"
+              >
+                {view === 'tracker'
+                  ? 'Session tracker'
+                  : view === 'proof'
+                    ? 'Regression proof'
+                    : 'TodoMVC adapter'}
               </Link>
               <div className="header-path">
-                <span>Adapter lab</span>
+                <span>
+                  {view === 'incident' ? 'Adapter lab' : 'TodoMVC adapter'}
+                </span>
                 <ChevronRight size={14} />
-                <span>Delayed clear</span>
+                <span>
+                  {view === 'tracker'
+                    ? 'Recorded sessions'
+                    : view === 'proof'
+                      ? 'Compare and export'
+                      : 'Delayed clear'}
+                </span>
               </div>
             </div>
             <span
@@ -635,45 +699,10 @@ export default function TodoMvcLab() {
                     ? 'Tool registration failed'
                     : 'Connecting tools'}
             </span>
-            <span className="version-chip">EXTERNAL APP <span>v0.4</span></span>
-          </header>
-
-          <div className="page-intro">
-            <div>
-              <div className="eyebrow">
-                INTEGRATION 002 <span>/</span> TODOMVC REACT
-              </div>
-              <h1>
-                The lost todo race
-                <span className="seeded">Interleave-seeded fault</span>
-              </h1>
-              <p>A delayed agent clear meets a human adding work.</p>
-            </div>
-            <Button
-              variant="outline"
-              className="reset-button"
-              onClick={() => reset()}
-            >
-              <RotateCcw />
-              {playing ? 'Stop & reset' : 'Reset app'}
-            </Button>
-          </div>
-
-          <div className="provenance-strip">
-            <Check size={15} />
-            <span>
-              Application mutations run through TodoMVC’s upstream React
-              reducer. The delayed snapshot replacement is intentionally
-              injected by Interleave.
+            <span className="version-chip">
+              EXTERNAL APP <span>v0.4</span>
             </span>
-            <a
-              href="https://github.com/tastejs/todomvc/blob/ff43b02e59dfa604386bb382034b2cd07c2bcd8a/examples/react/src/todo/reducer.js"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Inspect reducer <ExternalLink size={12} />
-            </a>
-          </div>
+          </header>
 
           <div className="run-toolbar">
             <Tabs
@@ -692,7 +721,7 @@ export default function TodoMvcLab() {
             <div className="proof-actions">
               <Button
                 variant="outline"
-                disabled={playing || !!operation || !hasRecording}
+                disabled={playing || !!operation || !canReplay}
                 onClick={() =>
                   void play(chooseRecipe(), state.mode).catch(() => {})
                 }
@@ -1036,8 +1065,8 @@ export default function TodoMvcLab() {
               </div>
             </div>
             <p className="proof-caption">
-              Analysis keeps the latest witnessed failure even after a
-              successful retry.
+              Analysis uses the latest browser recording when available and
+              keeps a witnessed failure even after a successful retry.
             </p>
             {comparison && (
               <div className="comparison-grid">
@@ -1108,7 +1137,7 @@ export default function TodoMvcLab() {
           <SessionPanel
             live={recording}
             sessions={archiveState.sessions}
-            selected={selectedSession}
+            selected={visibleSession}
             onSelect={setSelectedSession}
             onReplay={(session) =>
               void play(todoRecipeFromSession(session), state.mode).catch(

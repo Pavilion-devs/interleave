@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   useEffect,
   useLayoutEffect,
@@ -21,7 +22,6 @@ import {
   Clock3,
   Database,
   Download,
-  ExternalLink,
   FileCode2,
   FileWarning,
   FlaskConical,
@@ -121,6 +121,12 @@ type Comparison = {
 };
 
 export default function PlaneLabPage() {
+  const pathname = usePathname();
+  const view = pathname.endsWith('/tracker')
+    ? 'tracker'
+    : pathname.endsWith('/proof')
+      ? 'proof'
+      : 'incident';
   const [adapter] = useState(() => new PlaneAdapter());
   const [archive] = useState(() => new PlaneSessionArchive());
   const state = useSyncExternalStore(
@@ -143,8 +149,9 @@ export default function PlaneLabPage() {
     archive.getSnapshot,
     archive.getServerSnapshot,
   );
-  const [selectedSession, setSelectedSession] =
-    useState<Session<PlaneRecordedState> | null>(null);
+  const [selectedSession, setSelectedSession] = useState<
+    Session<PlaneRecordedState> | null | undefined
+  >(undefined);
   const [delayMs, setDelayMs] = useState(15000);
   const [patchTitle, setPatchTitle] = useState('Production runbook');
   const [metadataTitle, setMetadataTitle] = useState('Human verified runbook');
@@ -268,16 +275,47 @@ export default function PlaneLabPage() {
     setComparison(null);
     setReduction(null);
   };
+  const archivedRecipe = (failureOnly = false) => {
+    const candidates = selectedSession
+      ? [
+          selectedSession,
+          ...archive
+            .getSnapshot()
+            .sessions.filter((session) => session.id !== selectedSession.id),
+        ]
+      : archive.getSnapshot().sessions;
+    for (const session of candidates) {
+      if (
+        failureOnly &&
+        (!session.latestState.assertion || session.latestState.assertion.passed)
+      )
+        continue;
+      try {
+        return planeRecipeFromSession(session);
+      } catch {
+        continue;
+      }
+    }
+    return null;
+  };
   const chooseRecipe = () =>
     structuredClone(
-      savedRecipe.current.length ? savedRecipe.current : SAMPLE_PLANE_RECIPE,
+      savedRecipe.current.length
+        ? savedRecipe.current
+        : (archivedRecipe() ?? SAMPLE_PLANE_RECIPE),
     );
   const chooseFailure = () =>
     structuredClone(
       failureRecipe.current.length
         ? failureRecipe.current
-        : SAMPLE_PLANE_RECIPE,
+        : (archivedRecipe(true) ?? SAMPLE_PLANE_RECIPE),
     );
+  const canReplay = hasRecording || Boolean(archivedRecipe());
+  const visibleSession =
+    selectedSession === undefined && view === 'tracker'
+      ? (archiveState.sessions.find((session) => session.id !== recording.id) ??
+        null)
+      : (selectedSession ?? null);
   const play = async (recipe: PlaneCommand[], mode: Mode, animate = true) => {
     checkBusy();
     reset(mode);
@@ -584,10 +622,17 @@ export default function PlaneLabPage() {
   const assertion = state.assertion;
 
   return (
-    <main className="lab-app plane-lab">
+    <main className={`lab-app plane-lab plane-view-${view}`}>
       <div className="workspace">
         <AppSidebar
-          active="plane"
+          context="plane"
+          active={
+            view === 'tracker'
+              ? 'tracker'
+              : view === 'proof'
+                ? 'proof'
+                : 'plane'
+          }
           scenarioHeading="CURRENT INCIDENT"
           scenarioTitle="Metadata overwrite"
           scenarioDetail="Human PATCH × delayed Celery write"
@@ -606,12 +651,24 @@ export default function PlaneLabPage() {
                 prefetch={false}
                 aria-label="Interleave home"
               >
-                Plane incident
+                {view === 'tracker'
+                  ? 'Session tracker'
+                  : view === 'proof'
+                    ? 'Patch proof'
+                    : 'Plane incident'}
               </Link>
               <div className="header-path">
-                <span>Live workbench</span>
+                <span>
+                  {view === 'incident' ? 'Live workbench' : 'Plane #9674'}
+                </span>
                 <ChevronRight size={14} />
-                <span>Issue #9674</span>
+                <span>
+                  {view === 'tracker'
+                    ? 'Recorded sessions'
+                    : view === 'proof'
+                      ? 'Compare and export'
+                      : 'Issue #9674'}
+                </span>
               </div>
             </div>
             <span
@@ -634,99 +691,7 @@ export default function PlaneLabPage() {
             </span>
           </header>
 
-          <div className="page-intro">
-            <div>
-              <div className="eyebrow">
-                INTEGRATION 003 <span>/</span> PLANE PREVIEW
-              </div>
-              <h1>
-                The crawler that writes too late
-                <span className="seeded verified">
-                  source-verified incident
-                </span>
-              </h1>
-              <p>
-                A successful metadata edit is silently replaced by a queued
-                worker.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              className="reset-button"
-              onClick={() => reset()}
-            >
-              <RotateCcw /> {playing ? 'Stop & reset' : 'Reset incident'}
-            </Button>
-          </div>
-
-          <div className="provenance-strip plane-provenance">
-            <Check size={15} />
-            <span>
-              Behavior is derived from Plane{' '}
-              <b>preview@{PLANE_COMMIT.slice(0, 7)}</b>: the PATCH handler
-              queues every crawl and the worker writes metadata without a
-              revision check.
-            </span>
-            <a href={VIEW_SOURCE_URL} target="_blank" rel="noreferrer">
-              Handler <ExternalLink size={12} />
-            </a>
-            <a href={TASK_SOURCE_URL} target="_blank" rel="noreferrer">
-              Worker <ExternalLink size={12} />
-            </a>
-          </div>
-
-          <section className="evidence-rail" aria-label="Interleave proof flow">
-            <div>
-              <span>01</span>
-              <strong>Record</strong>
-              <small>native call + human edit</small>
-            </div>
-            <div>
-              <span>02</span>
-              <strong>Interrupt</strong>
-              <small>hold the worker write</small>
-            </div>
-            <div>
-              <span>03</span>
-              <strong>Inspect</strong>
-              <small>expected vs actual</small>
-            </div>
-            <div>
-              <span>04</span>
-              <strong>Minimize</strong>
-              <small>smallest failing sequence</small>
-            </div>
-            <div>
-              <span>05</span>
-              <strong>Export</strong>
-              <small>test + Plane patch</small>
-            </div>
-          </section>
-
-          <div className="proof-metrics" aria-label="Validation evidence">
-            <a
-              href="/webmcp-plane-acceptance.json"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <b>LIVE</b> browser-verified
-            </a>
-            <span>
-              <b>37 / 37</b> Plane tests
-            </span>
-            <span>
-              <b>13</b> upstream patch cases
-            </span>
-            <span>
-              <b>{native.status === 'ready' ? native.count : '9 → 5'}</b>{' '}
-              state-aware WebMCP tools
-            </span>
-            <span>
-              <b>0</b> live systems contacted
-            </span>
-          </div>
-
-          <div className="run-toolbar">
+          <div className="run-toolbar" id="experiment">
             <Tabs
               value={state.mode}
               onValueChange={(value) => reset(value as Mode)}
@@ -743,7 +708,7 @@ export default function PlaneLabPage() {
             <div className="proof-actions">
               <Button
                 variant="outline"
-                disabled={playing || !!operation || !hasRecording}
+                disabled={playing || !!operation || !canReplay}
                 onClick={() =>
                   void play(chooseRecipe(), state.mode).catch(() => {})
                 }
@@ -1120,7 +1085,9 @@ export default function PlaneLabPage() {
             <p className="proof-caption">
               The proposed Plane change avoids metadata-only recrawls and
               atomically checks the link URL and update timestamp before the
-              worker writes.
+              worker writes. The latest browser recording is used when
+              available; otherwise this page uses the deterministic
+              source-verified sample.
             </p>
             {comparison && (
               <div className="comparison-grid">
@@ -1214,7 +1181,7 @@ export default function PlaneLabPage() {
           <SessionPanel
             live={recording}
             sessions={archiveState.sessions}
-            selected={selectedSession}
+            selected={visibleSession}
             onSelect={setSelectedSession}
             onReplay={(session) =>
               void play(planeRecipeFromSession(session), state.mode).catch(

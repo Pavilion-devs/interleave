@@ -94,6 +94,14 @@ The browser must support concurrent human interaction while the tool awaits comp
 
 `packages/recorder` is the dependency-free `@interleave/recorder` package. It accepts an application state reader, optional redaction, semantic transitions, and tool functions. It has no reservation or React dependency. See its README for integration and limitations.
 
+The current build is available directly from the public Interleave site:
+
+```sh
+npm install https://interleave-webmcp-lab.asaborodaniel.chatgpt.site/interleave-recorder-0.2.0.tgz
+```
+
+The [`/integrate`](https://interleave-webmcp-lab.asaborodaniel.chatgpt.site/integrate) page shows the complete three-step adoption path. The package records supplied state and actions; each application continues to define its own correctness rule, replay semantics, and redaction policy.
+
 ```sh
 npm run build:recorder
 npm pack ./packages/recorder --pack-destination /tmp
@@ -104,11 +112,11 @@ This is a local distribution; the package has not been published to npm. The run
 ## Checks
 
 ```sh
-node --test tests/*.test.mjs
-npm run lint
-npx tsc --noEmit
-npm run build
+npm test
+npm run check
 ```
+
+`npm test` runs 49 core checks plus the exported Plane regression for a 50-test release gate. `npm run check` runs lint, type checking, all 50 tests, and the production build.
 
 Tests cover autonomous delayed completion, guarded recovery, cancellation, invalid inputs, duplicate calls, reset/replay races, JSON validation, asynchronous replay, generic recording, error preservation, redaction, immutable snapshots, bounded history, upstream TodoMVC reducer behavior, TodoMVC interruption/recovery, reduction, the Plane issue-link interruption, and regression exports that pass guarded behavior and fail the reproduced stale-write behavior. The Plane finding is linked to the already-public upstream issue; the TodoMVC defect remains explicitly seeded by Interleave.
 

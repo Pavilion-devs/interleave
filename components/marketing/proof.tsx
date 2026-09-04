@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import { Download, GitBranch, Minimize2, Play, Radio } from 'lucide-react';
 import { BentoCard } from './bento-card';
 
@@ -14,13 +13,7 @@ export function Proof() {
     <BentoCard className="p-6 sm:p-10" id="proof">
       <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-12 lg:gap-8">
         <div className="relative flex min-h-[25rem] flex-col justify-end overflow-hidden rounded-[2rem] border border-white/5 bg-[#09090b] p-7 text-white shadow-[0_30px_80px_-30px_rgba(0,0,0,0.5)] sm:p-8 lg:col-span-5">
-          <Image
-            src="/interleave-verdict.png"
-            alt=""
-            fill
-            sizes="(min-width: 1024px) 40vw, 100vw"
-            className="object-cover object-center opacity-55"
-          />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(16,185,129,0.2),transparent_34%),radial-gradient(circle_at_80%_70%,rgba(139,92,246,0.18),transparent_38%)]" aria-hidden="true" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/80 to-[#09090b]/20" />
           <div className="relative max-w-md">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 text-[11px] font-medium text-white/90 backdrop-blur-md">

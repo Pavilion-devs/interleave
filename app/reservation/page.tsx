@@ -7,6 +7,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { flushSync } from 'react-dom';
 import {
   Activity,
@@ -97,6 +98,12 @@ function CompletionClock({
 }
 
 export default function Home() {
+  const pathname = usePathname();
+  const view = pathname.endsWith('/tracker')
+    ? 'tracker'
+    : pathname.endsWith('/proof')
+      ? 'proof'
+      : 'incident';
   const [adapter] = useState(() => new ReservationAdapter());
   const lab = adapter.lab;
   const operation = useSyncExternalStore(
@@ -115,8 +122,9 @@ export default function Home() {
     archive.getSnapshot,
     archive.getServerSnapshot,
   );
-  const [selectedSession, setSelectedSession] =
-    useState<Session<RecordedState> | null>(null);
+  const [selectedSession, setSelectedSession] = useState<
+    Session<RecordedState> | null | undefined
+  >(undefined);
   const [delayMs, setDelayMs] = useState(15000);
   const state = useSyncExternalStore(
     lab.subscribe,
@@ -181,14 +189,47 @@ export default function Home() {
       }),
     [lab],
   );
+  const archivedRecipe = (failureOnly = false) => {
+    const candidates = selectedSession
+      ? [
+          selectedSession,
+          ...archive
+            .getSnapshot()
+            .sessions.filter((session) => session.id !== selectedSession.id),
+        ]
+      : archive.getSnapshot().sessions;
+    for (const session of candidates) {
+      if (
+        failureOnly &&
+        (!session.latestState.assertion || session.latestState.assertion.passed)
+      )
+        continue;
+      try {
+        return recipeFromSession(session);
+      } catch {
+        continue;
+      }
+    }
+    return null;
+  };
   const chooseRecipe = () =>
     structuredClone(
-      savedRecipe.current.length ? savedRecipe.current : SAMPLE_RECIPE,
+      savedRecipe.current.length
+        ? savedRecipe.current
+        : (archivedRecipe() ?? SAMPLE_RECIPE),
     );
   const chooseFailureRecipe = () =>
     structuredClone(
-      failureRecipe.current.length ? failureRecipe.current : SAMPLE_RECIPE,
+      failureRecipe.current.length
+        ? failureRecipe.current
+        : (archivedRecipe(true) ?? SAMPLE_RECIPE),
     );
+  const canReplay = hasRecording || Boolean(archivedRecipe());
+  const visibleSession =
+    selectedSession === undefined && view === 'tracker'
+      ? (archiveState.sessions.find((session) => session.id !== recording.id) ??
+        null)
+      : (selectedSession ?? null);
   const checkBusy = () => {
     if (busyRef.current)
       throw new Error('A replay is in progress. Wait for it to finish.');
@@ -627,10 +668,17 @@ export default function Home() {
   const reservation = state.reservation;
   const assertion = state.assertion;
   return (
-    <main className="lab-app">
+    <main className={`lab-app reservation-lab reservation-view-${view}`}>
       <div className="workspace">
         <AppSidebar
-          active="reservation"
+          context="reservation"
+          active={
+            view === 'tracker'
+              ? 'tracker'
+              : view === 'proof'
+                ? 'proof'
+                : 'reservation'
+          }
           scenarioHeading="CURRENT SCENARIO"
           scenarioTitle="Reservation race"
           scenarioDetail="Human edit × agent write"
@@ -640,13 +688,30 @@ export default function Home() {
         <section className="workbench">
           <header className="app-header">
             <div>
-              <Link className="brand" href="/" prefetch={false} aria-label="Interleave home">
-                Reservation race
+              <Link
+                className="brand"
+                href="/"
+                prefetch={false}
+                aria-label="Interleave home"
+              >
+                {view === 'tracker'
+                  ? 'Session tracker'
+                  : view === 'proof'
+                    ? 'Regression proof'
+                    : 'Reservation race'}
               </Link>
               <div className="header-path">
-                <span>Adapter lab</span>
+                <span>
+                  {view === 'incident' ? 'Adapter lab' : 'Reservation race'}
+                </span>
                 <ChevronRight size={14} />
-                <span>Concurrency fixture</span>
+                <span>
+                  {view === 'tracker'
+                    ? 'Recorded sessions'
+                    : view === 'proof'
+                      ? 'Compare and export'
+                      : 'Concurrency fixture'}
+                </span>
               </div>
             </div>
             <span
@@ -667,28 +732,11 @@ export default function Home() {
                     ? 'Tool registration failed'
                     : 'Connecting tools'}
             </span>
-            <span className="version-chip">EXPERIMENTAL <span>v0.4</span></span>
+            <span className="version-chip">
+              EXPERIMENTAL <span>v0.4</span>
+            </span>
           </header>
 
-          <div className="page-intro">
-            <div>
-              <div className="eyebrow">
-                EXPERIMENT 001 <span>/</span> CONCURRENCY
-              </div>
-              <h1>
-                Reservation race<span className="seeded">Seeded defect</span>
-              </h1>
-              <p>A human changes their mind. The agent is still working.</p>
-            </div>
-            <Button
-              variant="outline"
-              className="reset-button"
-              onClick={() => reset()}
-            >
-              <RotateCcw />
-              {playing ? 'Stop & reset' : 'Reset run'}
-            </Button>
-          </div>
           <div className="run-toolbar">
             <Tabs value={state.mode} onValueChange={(v) => reset(v as Mode)}>
               <TabsList className="mode-tabs">
@@ -705,7 +753,7 @@ export default function Home() {
             <div className="proof-actions">
               <Button
                 variant="outline"
-                disabled={playing || !!operation || !hasRecording}
+                disabled={playing || !!operation || !canReplay}
                 onClick={() =>
                   void playSequence(chooseRecipe(), state.mode).catch(() => {})
                 }
@@ -1155,7 +1203,7 @@ export default function Home() {
           <SessionPanel
             live={recording}
             sessions={archiveState.sessions}
-            selected={selectedSession}
+            selected={visibleSession}
             onSelect={setSelectedSession}
             warning={archiveState.warning}
             busy={playing || !!operation}
@@ -1200,8 +1248,8 @@ export default function Home() {
               </div>
             </div>
             <p className="proof-caption">
-              Uses your latest witnessed failure, or the included six-step
-              sample.
+              Uses the latest browser recording when available, or the included
+              six-step sample.
             </p>
             {comparison && (
               <div className="comparison-grid" aria-live="polite">

@@ -6,14 +6,17 @@ import {
   ExternalLink,
   FlaskConical,
   GitBranch,
+  GitPullRequest,
   Link2,
   ListChecks,
+  ScrollText,
 } from 'lucide-react';
 
-type LabRoute = 'plane' | 'reservation' | 'todomvc';
+type LabRoute = 'plane' | 'tracker' | 'proof' | 'reservation' | 'todomvc';
 
 interface AppSidebarProps {
   active: LabRoute;
+  context?: 'plane' | 'reservation' | 'todomvc';
   scenarioHeading: string;
   scenarioTitle: string;
   scenarioDetail: string;
@@ -23,7 +26,7 @@ interface AppSidebarProps {
   footerLinkLabel?: string;
 }
 
-const routes: Array<{
+const primaryRoutes: Array<{
   id: LabRoute;
   href: string;
   label: string;
@@ -55,6 +58,7 @@ const routes: Array<{
 
 export function AppSidebar({
   active,
+  context = 'plane',
   scenarioHeading,
   scenarioTitle,
   scenarioDetail,
@@ -63,6 +67,35 @@ export function AppSidebar({
   footerHref,
   footerLinkLabel,
 }: AppSidebarProps) {
+  const evidenceRoutes = [
+    {
+      id: 'tracker' as const,
+      href: `/${context}/tracker`,
+      label: 'Session tracker',
+      tag: 'REC',
+      icon: ScrollText,
+    },
+    {
+      id: 'proof' as const,
+      href: `/${context}/proof`,
+      label: context === 'plane' ? 'Patch proof' : 'Regression proof',
+      tag: context === 'plane' ? 'FIX' : 'TEST',
+      icon: GitPullRequest,
+    },
+  ];
+  const groups =
+    context === 'plane'
+      ? [
+          { label: 'FLAGSHIP', routes: primaryRoutes.slice(0, 1) },
+          { label: 'EVIDENCE', routes: evidenceRoutes },
+          { label: 'ADAPTER LABS', routes: primaryRoutes.slice(1) },
+        ]
+      : [
+          { label: 'FLAGSHIP', routes: primaryRoutes.slice(0, 1) },
+          { label: 'ADAPTER LABS', routes: primaryRoutes.slice(1) },
+          { label: 'EVIDENCE', routes: evidenceRoutes },
+        ];
+
   return (
     <aside className="sidebar" aria-label="Interleave workbench">
       <div className="sidebar-main">
@@ -72,34 +105,36 @@ export function AppSidebar({
         </Link>
 
         <nav className="sidebar-nav">
-          <div className="sidebar-heading">FLAGSHIP</div>
-          {routes.map((route, index) => {
-            const Icon = route.icon;
-            const item = (
-              <>
-                <span className="sidebar-route-icon"><Icon size={18} /></span>
-                <span className="sidebar-route-label">{route.label}</span>
-                <span className="sidebar-route-tag">{route.tag}</span>
-              </>
-            );
-            const separator = index === 1 && (
-              <div className="sidebar-heading labs-heading">ADAPTER LABS</div>
-            );
-            return (
-              <div className="sidebar-route" key={route.id}>
-                {separator}
-                {route.id === active ? (
-                  <div className="nav-active" aria-current="page">
-                    {item}
-                  </div>
-                ) : (
-                  <Link className="nav-link" href={route.href} prefetch={false}>
-                    {item}
-                  </Link>
-                )}
+          {groups.map((group, groupIndex) => (
+            <div className="sidebar-group" key={group.label}>
+              <div className={`sidebar-heading ${groupIndex ? 'labs-heading' : ''}`}>
+                {group.label}
               </div>
-            );
-          })}
+              {group.routes.map((route) => {
+                const Icon = route.icon;
+                const item = (
+                  <>
+                    <span className="sidebar-route-icon"><Icon size={18} /></span>
+                    <span className="sidebar-route-label">{route.label}</span>
+                    <span className="sidebar-route-tag">{route.tag}</span>
+                  </>
+                );
+                return (
+                  <div className="sidebar-route" key={route.id}>
+                    {route.id === active ? (
+                      <div className="nav-active" aria-current="page">
+                        {item}
+                      </div>
+                    ) : (
+                      <Link className="nav-link" href={route.href} prefetch={false}>
+                        {item}
+                      </Link>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="sidebar-incident">
