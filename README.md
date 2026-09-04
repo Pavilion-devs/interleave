@@ -37,7 +37,19 @@ When a failure appears, Interleave replays the same recording, reduces it to the
 
 ## ▶ Demo
 
-**[Run the live Plane demo ↗](https://interleave-iota.vercel.app/plane)**
+<div align="center">
+
+<a href="https://youtu.be/9EWZyxjHgj0">
+  <img src="docs/assets/interleave-demo-banner.png" alt="Watch the Interleave demo: stop delayed agent actions from overwriting human work" width="100%" />
+</a>
+
+<p>
+  <strong><a href="https://youtu.be/9EWZyxjHgj0">Watch the public demo ↗</a></strong>
+  ·
+  <strong><a href="https://interleave-iota.vercel.app/plane">Run the live Plane demo ↗</a></strong>
+</p>
+
+</div>
 
 The flagship demo starts a real pending WebMCP call, lets a person save newer metadata while that call is unresolved, and then allows the delayed worker to finish. Interleave captures all three moments and shows the rule, expected title, actual title, queued revision, and live revision that prove the stale write.
 
